@@ -1,0 +1,18 @@
+Version: 1.0
+ProjectId: c6043c65-216c-4563-8318-8e126f62f0d6
+
+RestoreWorkspace: Default
+SaveWorkspace: Default
+AlwaysSaveHistory: Default
+
+EnableCodeIndexing: Yes
+UseSpacesForTab: Yes
+NumSpacesForTab: 2
+Encoding: UTF-8
+
+RnwWeave: Sweave
+LaTeX: pdfLaTeX
+
+PythonType: conda
+PythonVersion: 3.8.12
+PythonPath: ~/miniconda3/envs/pachong/bin/python3.8
