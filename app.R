@@ -181,7 +181,7 @@ ui <- page_navbar(
       sidebar = sidebar(
         id = "bm_input",
         width = 380,
-        title = "Benchmark inputs",
+        title = NULL,
         tagList(
           div(class = "mb-4",
             div(class = "fw-bold mb-1",
@@ -308,7 +308,7 @@ ui <- page_navbar(
       sidebar = sidebar(
         id = "rb_input",
         width = 380,
-        title = "Robustness inputs",
+        title = NULL,
         tagList(
           div(class = "mb-4",
             div(class = "fw-bold mb-1",
@@ -366,7 +366,7 @@ ui <- page_navbar(
       sidebar = sidebar(
         id = "sm_input",
         width = 380,
-        title = "Application inputs",
+        title = NULL,
         tagList(
           div(class = "mb-4",
             div(class = "fw-bold mb-1",
@@ -548,7 +548,7 @@ ui <- page_navbar(
       sidebar = sidebar(
         id = "job_page",
         width = 380,
-        title = "Job Center",
+        title = NULL,
         textInput("jobid_input", label = "Input Jobid", value = "BEN1712624574ZFX"),
         div(
           class = "d-grid gap-2 mt-3",
@@ -587,7 +587,7 @@ ui <- page_navbar(
       layout_sidebar(
         sidebar = sidebar(
           width = 350,
-          title = "AUC annotation",
+          title = NULL,
           shiny::p(
             br(),
             "Select a cancer and download annotations.",
@@ -620,7 +620,7 @@ ui <- page_navbar(
       layout_sidebar(
         sidebar = sidebar(
           width = 350,
-          title = "ES annotation",
+          title = NULL,
           shiny::p(
             br(),
             "Select a cancer and download annotations.",
@@ -662,7 +662,7 @@ ui <- page_navbar(
       layout_sidebar(
         sidebar = sidebar(
           width = 350,
-          title = "Gene converter",
+          title = NULL,
           textAreaInput("text_ctg", "Step 1. Input your signature", height = "200px"),
           actionButton("runCTGdemo", "demo", class = "btn-outline-primary"),
           shiny::p(),
@@ -692,7 +692,7 @@ ui <- page_navbar(
       layout_sidebar(
         sidebar = sidebar(
           width = 350,
-          title = "Drug converter",
+          title = NULL,
           textAreaInput("text_ctd", "Step 1. Input your drug ID", height = "200px"),
           actionButton("runCTDdemo1", "demo1", class = "btn-outline-primary"),
           actionButton("runCTDdemo2", "demo2", class = "btn-outline-primary"),
@@ -739,7 +739,7 @@ ui <- page_navbar(
       layout_sidebar(
         sidebar = sidebar(
           width = 300,
-          title = "Help topics",
+          title = NULL,
           # Nav-like help menu using radio buttons for selecting help content
           radioButtons(
             "help_topic",

@@ -44,7 +44,7 @@ load("data_preload/others/landmark.rdata")
 
 # Step 标题即 popover 触发（点击），无 ? 图标，统一为 popover
 # 参考 bslib Shiny Workflows 4.6：popovers 由触发元素（此处为标题文字）点击展开
-step_pop <- function(title, help, popover_title = "Help") {
+step_pop <- function(title, help, popover_title = NULL) {
   popover(title, HTML(help), title = popover_title)
 }
 
