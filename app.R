@@ -291,7 +291,7 @@ ui <- page_navbar(
       ),
       card(
         full_screen = TRUE,
-        card_header("Benchmark results"),
+        # card_header("Benchmark results"),
         uiOutput(outputId = "display_bm") %>% withSpinner()
       )
     )
@@ -349,7 +349,7 @@ ui <- page_navbar(
       ),
       card(
         full_screen = TRUE,
-        card_header("Robustness results"),
+        # card_header("Robustness results"),
         uiOutput(outputId = "display_rb") %>% withSpinner()
       )
     )
@@ -531,7 +531,7 @@ ui <- page_navbar(
       ),
       card(
         full_screen = TRUE,
-        card_header("Application results"),
+        # card_header("Application results"),
         uiOutput(outputId = "display_sm") %>% withSpinner()
       )
     )
@@ -567,7 +567,7 @@ ui <- page_navbar(
       ),
       card(
         full_screen = TRUE,
-        card_header("Job results"),
+        # card_header("Job results"),
         tableOutput("display_jc_info"),
         uiOutput(outputId = "display_jc") %>% withSpinner()
       )
@@ -608,7 +608,7 @@ ui <- page_navbar(
         ),
         card(
           full_screen = TRUE,
-          card_header("AUC annotations"),
+          # card_header("AUC annotations"),
           uiOutput(outputId = "display_an_auc") %>% withSpinner(),
           dataTableOutput("display_an_auc_tb")
         )
@@ -641,7 +641,7 @@ ui <- page_navbar(
         ),
         card(
           full_screen = TRUE,
-          card_header("ES annotations"),
+          # card_header("ES annotations"),
           uiOutput(outputId = "display_an_es") %>% withSpinner(),
           dataTableOutput("display_an_es_tb")
         )
@@ -681,7 +681,7 @@ ui <- page_navbar(
         ),
         card(
           full_screen = TRUE,
-          card_header("Gene conversion results"),
+          # card_header("Gene conversion results"),
           uiOutput(outputId = "display_ctg") %>% withSpinner()
         )
       )
@@ -719,7 +719,7 @@ ui <- page_navbar(
         ),
         card(
           full_screen = TRUE,
-          card_header("Drug conversion results"),
+          # card_header("Drug conversion results"),
           uiOutput(outputId = "display_ctd") %>% withSpinner()
         )
       )
@@ -761,7 +761,7 @@ ui <- page_navbar(
         ),
         card(
           full_screen = TRUE,
-          card_header("Help documentation"),
+          # card_header("Help documentation"),
           uiOutput("display_help") %>% withSpinner()
         )
       )
