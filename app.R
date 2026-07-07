@@ -3,11 +3,13 @@
 # the 'Run App' button above.
 #
 # the UI Codes are modified from ScotPHO's Shiny profile platform
+# and refactored with bslib (Bootstrap 5).
 #
 
 library(shiny)
 library(shinyjs)
-library(shinythemes)
+library(bslib)
+library(bsicons)
 library(shinyWidgets)
 library(shinyBS)
 library(shinycssloaders)
@@ -16,849 +18,794 @@ library(shinylogs)
 library(future)
 library(promises)
 library(htmltools)
-plan(multisession,workers = 64L)
+plan(multisession, workers = 64L)
 plan(future.callr::callr)
 
 shinyOptions(cache = cachem::cache_mem(max_size = 1000e6))
 options(shiny.sanitize.errors = TRUE)
 
-ui <- tagList( # needed for shinyjs
-  useShinyjs(),  # Include shinyjs
-  useSweetAlert(), 
-  # introjsUI(),
-  navbarPage(id = "intabset", #needed for landing page
-             # title = "BCSS",
-             title = div(tags$a(img(src="LOGO.png", height=50)),
-                         style = "position: relative; top: -15px;"), # Navigation bar
-             windowTitle = "Signature Search Polestar", #title for browser tab
-             theme = shinytheme("cerulean"), #Theme of the app (blue navbar)
-             collapsible = TRUE, #tab panels collapse into menu in small screens
-             header = tags$head(includeCSS("www/styles.css"), # CSS styles
-                                HTML("<html lang='en'>"),
-                                tags$link(rel="shortcut icon", href="favicon.ico"), #Icon for browser tab
-                                HTML("<base target='_blank'>"),
-                                # cookie_box
-                                ),
-             ###############################################.
-             ## Landing page ----
-             ###############################################.
-             tabPanel(
-               title = "Home", icon = icon("home"),
-               mainPanel(width = 12, # style="margin-left:4%; margin-right:4%",
-                         
-                         fluidRow(column(7,(h3("Signature Search Polestar", style="margin-top:1px;"))),
-                                  (column(4,actionButton("btn_landing",
-                                                         label="Help: Take tour of the SSP",
-                                                         icon=icon('question-circle'),class="down")))),
-                         # 第一行
-                         fluidRow(
-
-                           column(6, class="landing-page-column",br(), #spacing
-                                  lp_main_box(image_name= "landing_button_time_trend",
-                                              button_name = 'jump_to_bm', title_box = "Benchmark",
-                                              description = 'Evalutaion of Signature Search methods based on annotation')),
-                           
-                           column(6, class="landing-page-column",br(), #spacing
-                                  lp_main_box(image_name= "landing_button_time_trend",
-                                              button_name = 'jump_to_rb', title_box = "Robustness",
-                                              description = 'Evalutaion of Signature Search methods based on drug self-retrieval')),
-
-                         ),
-
-                         # 第二行
-                         fluidRow(
-                           
-                           #Table box
-                           column(6, class="landing-page-column",
-                                  br(), #spacing
-                                  
-                                  lp_main_box(image_name= "landing_button_data_table",
-                                              button_name = 'jump_to_sm', title_box = "Application (Query Drugs)",
-                                              description = 'Drugs repurposing using Signature Search methods'),
-                                  
-                           ),
-                           
-                           #Table box
-                           column(6, class="landing-page-column", br(), #spacing
-                                  lp_main_box(image_name= "landing_button_other_profile",
-                                              button_name = 'jump_to_an', title_box = "Annotation",
-                                              description = 'Obtain preliminary annotation of Drugs from GSDC and DRH'),
-                                  
-                           ),
-                         ),
-
-                         # 第三行
-                         fluidRow(
-                           #Table box
-                           column(6, class="landing-page-column", br(), #spacing
-                                  lp_main_box(image_name= "landing_button_technical_resources",
-                                              button_name = 'jump_to_jc', title_box = "Job Center",
-                                              description = 'Retrieve your query results'),
-                                  
-                           ),
-                           # data page
-                           column(6, class="landing-page-column",br(), #spacing
-                                  lp_main_box(image_name= "landing_button_related_links",
-                                              button_name = 'jump_to_ct', title_box = "Converter",
-                                              description = 'Easily convert gene and drug identifiers')
-                           ),
-                           
-                         ),
-                         
-               ) #main Panel bracket
-             ),# tab panel bracket
-             ###############################################.
-             ## Benchmark ----
-             ###############################################.
-             tabPanel("Benchmark", icon = icon("chart-area"), value = "benchmark",
-                      sidebarLayout(  
-                        sidebarPanel( width = 4,
-                          id= "bm_input",
-                          popify(
-                            shiny::strong(tagList("Step 1. Select a pharmacotranscriptomic dataset",icon("circle-question"))),
-                            title = NULL,
-                            content = paste(
-                              "SSP contains datasets of nine tumor cell lines at ",
-                              as.character(strong("diifferent concentration and treat time.")),
-                              "<br>In general, we recommend user to select a dataset with more drugs and highly related to cancer of interest.",
-                              "<br> The blank annotation can be obtained by clicking the button provided below. Once filled out, the annotation file could be used in step 4."
-                              ),
-                            trigger = "click", placement = "right"
-                          ),
-                          
-                          pickerInput("sel_experiment", label = NULL, 
-                                      choices=drug_num_list1 , selected = "LINCS_HEPG2_10uM_6h.rdata"
-                                      ),
-                          downloadButton("dl_drug_ann_bm","Download Blank Annotation", class = "btn-success"),
-                          
-                          shiny::br(),
-
-                          shiny::br(),
-                          popify(
-                            shiny::strong(tagList("Step 2. Select Signature Search methods",icon("circle-question"))),
-                            title = NULL,
-                            content = paste("Please select ",
-                                            as.character(strong("at least TWO")),
-                                            "methods for benchmark. More methods mean more time.",
-                                            as.character(strong("The time for a full-seleted job is 15~30 mins"))
-                            ),
-                            trigger = "click",
-                            placement = "right"
-                          ),
-                          shiny::p(),
-                          shiny::p(),
-                          awesomeCheckboxGroup("sel_ss",
-                                               label = NULL,
-                                               choices=ss_list,
-                                               selected = list("SS_Xsum","SS_CMap")
-                          ),
-                          
-                          shiny::br(),
-                          popify(
-                            shiny::strong(tagList("Step 3. upload oncogenic signature",icon("circle-question"))),
-                            title = NULL,
-                            content = paste("oncogenic signature is a gene list (gene symbol) with log2FC, derived from gene expression profile from cell lines or patient cohorts. A", 
-                                          a(href = "demo/signature.txt", "demo signature file"),
-                                          "is provided.<br>If you have other identifier (e.g. EntrezID), please go to",
-                                          as.character(strong(" converter page"))," to convert your signature."
-                            ),
-                            trigger = "click",
-                            placement = "right"
-                          ),
-
-                          fileInput(
-                            inputId = "file_sig",
-                            label = NULL,
-                            buttonLabel = "Browse...",
-                            placeholder = "No file selected",
-                            accept = c(".csv",".txt")
-                          ),
-                          
-
-
-                          shiny::br(),
-                          
-                          popify(
-                            shiny::strong(tagList("Step 4a: upload drug annotations (for AUC)",icon("circle-question"))),
-                            title = NULL,
-                            content = paste("At least upload one type annotation in 4a or 4b, also you can upload both of them. For AUC, we recommend upload a list of experimentally evaluated drugs (for example, IC50 < 10μM or IC50 > 10μM). A", 
-                                            a(href = "demo/drug_annotation_AUC.txt", "demo drug annotation for AUC"),
-                                            "is provided.",
-                                            "<br>SSP accept drug name as input, if you have other identifier (e.g. PubchemCID), please go to",
-                                            as.character(strong(" converter page"))," to convert your annotation."
-                            ),
-                            trigger = "click",
-                            placement = "right"
-                          ),
-                          
-                          fileInput(
-                            inputId = "file_IC50",
-                            label = NULL,
-                            buttonLabel = "Browse...",
-                            placeholder = "No file selected",
-                            accept = c(".csv",".txt")
-                          ),
-                          
-                          shiny::br(),
-                          
-                          
-                          popify(
-                            shiny::strong(tagList("Step 4b: upload drug annotations (for ES)",icon("circle-question"))),
-                            title = NULL,
-                            content = paste("At least upload one drug annotation in 4a or 4b, also you can upload both of them. For ES, we recommend upload a list of clinically effective drugs (for example, FDA-approved drugs). A", 
-                                            a(href = "demo/drug_annotation_ES.txt", "demo drug annotation for ES"),
-                                            "is provided.",
-                                            "<br>SSP accept drug name as input, if you have other identifier (e.g. PubchemCID), please go to",
-                                            as.character(strong(" converter page"))," to convert your annotation."
-                            ),
-                            trigger = "click",
-                            placement = "right"
-                          ),
-                          
-                          fileInput(
-                            inputId = "file_FDA",
-                            label = NULL,
-                            buttonLabel = "Browse...",
-                            placeholder = "No file selected",
-                            accept = c(".csv",".txt")
-                          ),
-                          
-                          
-                          actionButton("runBM", "Run", class = "btn-success"),
-                          actionButton("reset","Reset"),
-                          actionButton("runBENdemo", "demo(Benchmark)")
-
-                          
-                        ), # end of side pannel
-                        
-                        mainPanel(id= "bm_out",
-                                  uiOutput(outputId = "display_bm") %>% withSpinner(),
-                        )
-                      ) # slidelayout
-             ), #Tab panel bracket
-             
-             ###############################################.
-             ## Robustness ----
-             ###############################################.
-             tabPanel("Robustness", icon = icon("chart-area"), value = "robustness",
-                      sidebarLayout(  
-                        sidebarPanel( width = 4,
-                                      id= "rb_input",
-                                      
-                                      popify(
-                                        shiny::strong(tagList("Step 1. Select a pharmacotranscriptomic dataset",icon("circle-question"))),
-                                        title = NULL,
-                                        content = paste(
-                                          "SSP contains datasets of nine tumor cell lines at ",
-                                          as.character(strong("diifferent concentration and treat time.")),
-                                          "<br>In general, we recommend user to select a dataset with more drugs and highly related to cancer of interest"
-                                        ),
-                                        trigger = "click", placement = "right"
-                                      ),
-                                      
-                                      pickerInput("sel_experiment_rb", label = NULL, 
-                                                  choices=drug_num_list1 , selected = "LINCS_A549_1.11uM_6h.rdata"
-                                      ),
-
-                                      shiny::br(),
-                                      
-                                      popify(
-                                        shiny::strong(tagList("Step 2. Select Signature Search:",icon("circle-question"))),
-                                        title = NULL,
-                                        content = paste(
-                                          "Robustness pre-computes the performance of signature search methods at different datasets.<br>",
-                                          as.character(strong("Just select your interested methods.")),
-                                          "<br>The methods over average(red) are reconmmended to use in application module."
-                                        ),
-                                        trigger = "click", placement = "right"
-                                      ),
-                                      shiny::p(),
-                                      shiny::p(),
-                                      awesomeCheckboxGroup("sel_ss_rb",
-                                                           NULL,
-                                                           choices=ss_list,
-                                                           selected = list("SS_Xsum","SS_CMap","SS_GSEA","SS_ZhangScore","SS_XCos")
-                                      ),
-                                      shiny::br(),
-                                      actionButton("runRB", "Run", class = "btn-success"),
-                                      actionButton("reset_rb","Reset")
-                        ), # end of side pannel
-                        mainPanel(id= "rb_out",
-                                  uiOutput(outputId = "display_rb") %>% withSpinner()
-                        ),
-                      ) # slidelayout
-             ), #Tab panel bracket
-             
-             ###############################################.
-             ## Application ----
-             ###############################################.
-             tabPanel("Application (Query Drugs)", icon = icon("list-ul"), value = "singlemethod",
-                      sidebarLayout( 
-                        sidebarPanel(  width = 4,
-                          id= "sm_input",
-                          
-                          popify(
-                            shiny::strong(tagList("Step 1. Select module:",icon("circle-question"))),
-                            title = NULL,
-                            content = paste(
-                              as.character(strong("Single Search")),
-                              " is the traditional method to query promising drugs, just like GSEA.<br>",
-                              as.character(strong("SS_all")),
-                              "query promising drugs integrating the results of all SSMs.<br>",
-                              as.character(strong("SS_corss")),
-                              " use two oncogenic signatures to query promising drugs with consensus."
-                            ),
-                            trigger = "click", placement = "right"
-                          ),
-                          
-                          # 设定网页模块
-                          pickerInput(inputId = "sel_model_sm", label = NULL, 
-                                      choices = list("Single method" = "singlemethod", 
-                                                     "SS cross" = "SS_cross", 
-                                                     "SS all" = "SS_all"), 
-                                      selected = "singlemethod"),
-                          shiny::br(),
-                          
-                          # 设定三个子页面的状态
-                          # 单个模块界面，只要确定选择哪个算法就行
-                          conditionalPanel(
-                            condition = "input.sel_model_sm == 'singlemethod' | input.sel_model_sm == 'SS_cross'" ,
-                            
-                            popify(
-                              shiny::strong(tagList("Step 2. Select Signature Search method:",icon("circle-question"))),
-                              title = NULL,
-                              content = paste(
-                                "Just select one method of your interest."
-                              ),
-                              trigger = "click", placement = "right"
-                            ),
-                            shiny::p(),
-                            awesomeRadio("sel_ss_sm",
-                                         NULL,
-                                         choices=ss_list,
-                                         selected = list("SS_GSEA")
-                            ),
-                          ),
-                          
-                          # 交叉模块，需要确定选择哪个算法
-                          # （目前来看和single算法一致，此处预留拓展空间）
-                          # conditionalPanel(
-                          #   condition = "" ,
-                          #   radioButtons("sel_ss_sm",
-                          #                "Step 2. Select method",
-                          #                choices=ss_list,
-                          #                selected = list("SS_Xsum"),
-                          #   ),
-                          # ),
-                          
-                          # 全部运算模块
-                          # 需要，选择算法，设定汇总排序的区域
-                          conditionalPanel(
-                            condition = "input.sel_model_sm == 'SS_all'" ,
-                            
-                            popify(
-                              shiny::strong(tagList("Step 2a. Select methods",icon("circle-question"))),
-                              title = NULL,
-                              content = paste(
-                                "Please at least two methods of your interest, More methods mean more time.",
-                                as.character(strong("The time for a full-seleted job is 20~40 mins"))
-                              ),
-                              trigger = "click", placement = "right"
-                            ),
-                            shiny::p(),
-                            
-                            awesomeCheckboxGroup("sel_all_sm", 
-                                               "",
-                                               choices=ss_list,
-                                               selected = list("SS_Xsum","SS_CMap"),
-                                               
-                            ),
-                            
-                            popify(
-                              shiny::strong(tagList("Step 2b: Select direction:",icon("circle-question"))),
-                              title = NULL,
-                              content = paste(
-                                "SS_all only compare the drugs in same direction (scores both > 0 or < 0). Down is default for oncogenic signature. Other type signature is not recommended."
-                              ),
-                              trigger = "click", placement = "right"
-                            ),
-                            shiny::p(),
-                            
-                            awesomeRadio("sel_direct_sm", 
-                                         NULL,
-                                         choices=sm_direct,inline = T,
-                                         selected = list("Down")
-                            ),
-                          ),
-                          
-                          # 确定选择哪个算法作为比较基准
-                          shiny::br(),
-                          popify(
-                            shiny::strong(tagList("Step 3. Select a pharmacotranscriptomic dataset",icon("circle-question"))),
-                            title = NULL,
-                            content = paste(
-                              "SSP contains datasets of nine tumor cell lines at ",
-                              as.character(strong("diifferent concentration and treat time.")),
-                              "<br>In general, we recommend user to select a dataset with more drugs and highly related to cancer of interest"
-                            ),
-                            trigger = "click", placement = "right"
-                          ),
-                          pickerInput("sel_experiment_sm", label = NULL, 
-                                      choices=drug_num_list1 , selected = "LINCS_MCF7_10uM_6h.rdata"
-                                      ),
-
-                          shiny::br(),
-                          
-                          conditionalPanel(
-                            condition = "input.sel_model_sm == 'SS_all' | input.sel_model_sm == 'singlemethod'" ,
-                            
-                            popify(
-                              shiny::strong(tagList("Step 4. upload oncogenic signature",icon("circle-question"))),
-                              title = NULL,
-                              content = paste("Oncogenic signature is a gene list (gene symbol) with log2FC, derived from gene expression profile from cell lines or patient cohorts. A", 
-                                              a(href = "demo/signature.txt", "demo signature file"),
-                                              "is provided.<br>If you have other identifier (e.g. EntrezID), please go to",
-                                              as.character(strong(" converter page"))," to convert your signature."
-                              ),
-                              trigger = "click",
-                              placement = "right"
-                            ),
-                            
-                            # 上传signature (普通情况)
-                            fileInput(
-                              inputId = "file_sig_sm",
-                              label = NULL,
-                              buttonLabel = "Browse...",
-                              placeholder = "No file selected",
-                              accept = c(".csv",".txt")
-                            ),
-                          ),
-                          
-                          conditionalPanel(
-                            condition = "input.sel_model_sm == 'SS_cross'" ,
-                            
-                            # 上传signature (特殊情况)
-                            popify(
-                              shiny::strong(tagList("Step 4a: upload oncogenic signature 1 and name it",icon("circle-question"))),
-                              title = NULL,
-                              content = paste("oncogenic signature is a gene list (gene symbol) with log2FC, derived from gene expression profile from cell lines or patient cohorts. A", 
-                                              a(href = "demo/signature.txt", "demo signature file"),
-                                              "is provided.<br>If you have other identifier (e.g. EntrezID), please go to",
-                                              as.character(strong(" converter page"))," to convert your signature."
-                              ),
-                              trigger = "click",
-                              placement = "right"
-                            ),
-                            
-                            textInput("file_name1", label = NULL, value = "Signature1"),
-                            fileInput(
-                              inputId = "file_sig_sm1",
-                              label = NULL,
-                              buttonLabel = "Browse...",
-                              placeholder = "No file selected",
-                              accept = c(".csv",".txt")
-                            ),
-                            
-                            popify(
-                              shiny::strong(tagList("Step 4b: upload oncogenic signature 2 and name it",icon("circle-question"))),
-                              title = NULL,
-                              content = paste("oncogenic signature is a gene list (gene symbol) with log2FC, derived from gene expression profile from cell lines or patient cohorts. A", 
-                                              a(href = "demo/signature2.txt", "demo signature file"),
-                                              "is provided.<br>If you have other identifier (e.g. EntrezID), please go to",
-                                              as.character(strong(" converter page"))," to convert your signature."
-                              ),
-                              trigger = "click",
-                              placement = "right"
-                            ),
-                            textInput("file_name2",label = NULL , value = "Signature2"),
-                            fileInput(
-                              inputId = "file_sig_sm2",
-                              label = NULL,
-                              buttonLabel = "Browse...",
-                              placeholder = "No file selected",
-                              accept = c(".csv",".txt")
-                            ),
-                          ),
-                          # 设定使用排序多少的内容进行计算？
-                          popify(
-                            shiny::strong(tagList("Step 5. Set topN",icon("circle-question"))),
-                            title = NULL,
-                            content = paste("topN is determined by Benchmark or Robustness. <br>",
-                                            "If this score is monotonically increasing in Benchmark and Robustness, ",
-                                            "we recommend setting topN to length of oncogenic signature."),
-                            trigger = "click",
-                            placement = "right"
-                          ),
-                          
-                          numericInput("sel_topn_sm", label = NULL, 
-                                       value = 150, min = 10, max = 489),
-                          
-                          shiny::br(),
-                          actionButton("runSM", "Run", class = "btn-success"),
-                          actionButton("reset_sm","Reset"),
-                          shiny::br(),
-                          actionButton("runAPPdemo1", "demo(Single method)"),
-                          actionButton("runAPPdemo2", "demo(SS_all)"),
-                          actionButton("runAPPdemo3", "demo(SS_cross)"),
-                          
-                        ),
-                        mainPanel( id= "sm_out",
-                          uiOutput(outputId = "display_sm") %>% withSpinner()
-                        ),
-
-                      )
-             ), #Tab panel bracket
-             
-             
-             ###############################################.
-             ## Job Center ---- 
-             ###############################################.
-             tabPanel("Job Center", icon = icon("signal"), value = "jobcenter",
-                      sidebarLayout( 
-                        sidebarPanel(  width = 4,
-                          id = "job_page",
-                          textInput("jobid_input", label = "Input Jobid", value = "BEN1712624574ZFX"),
-                          shiny::br(),
-                          actionButton("jobid_get","Retrieve", class = "btn-success"),
-                          actionButton("reset_jc","Reset"),
-                          shiny::br(),
-                          actionButton("runjcBENdemo", "demo(Benchmark)"),
-                          shiny::br(),
-                          actionButton("runjcAPPdemo1", "demo(Single method)"),
-                          actionButton("runjcAPPdemo2", "demo(SS_all)"),
-                          actionButton("runjcAPPdemo3", "demo(SS_cross)"),
-                          shiny::p(
-                            br(),
-                            # "Here we provide some jobid for demo result presentation.",
-                            strong("Please be aware that the \"Quick Tip\" button may become unresponsive when you're viewing identical result types across two different modules, such as seeing AUC in both the Job Center and Benchmark, or SS_all in both the Job Center and Application."),
-                            strong("In such cases, kindly use the \"Reset\" button within the respective module to reactivate the \"Quick Tip\" functionality in the other module.")
-                          )
-
-                        ),
-                        mainPanel(id= "jc_out",
-                                  tableOutput("display_jc_info"),
-                                  uiOutput(outputId = "display_jc") %>% withSpinner()
-                        ), # main panel bracket
-                      ),
-
-             ), #Tab panel bracket
-             
-             ###############################################.
-             ## Annotation ---- 
-             ###############################################.
-             navbarMenu("Annotation", icon = icon("table"),
-             tabPanel("For AUC", value = "an_auc",
-                      sidebarLayout(
-                        sidebarPanel(width = 4,
-                                     shiny::p(
-                                       br(),
-                                       "Select a cancer and download annotations.",
-                                       br(),
-                                       "The drug annotation are display on the right table.",
-                                       br(),
-                                       "Here are two types of annotation files for different methods.",
-                                       br(),
-                                     ),
-                                     selectInput("an_auc_input","Please select cancer",
-                                                 choices = disinfo_vector,
-                                                 selected = "PRAD"),
-                                     # selectInput("an_auc_input_type","Step 2. Select annotation type",
-                                     #             choices = c("Area Under Curve(AUC)" = "AUC",
-                                     #                         "Enrichment Score(ES)" = "ES"),
-                                     #             selected = "AUC"),
-                                     shiny::br(),
-                                     downloadButton("run_an_auc","Download annotations", class = "btn-success"),
-                        ),
-                        mainPanel(id= "an_auc_out",
-                                  uiOutput(outputId = "display_an_auc") %>% withSpinner(),
-                                  dataTableOutput("display_an_auc_tb")
-
-                        ), # main panel bracket
-                      ),
-
-             ), #Tab panel bracket
-             tabPanel("For ES", value = "an_es",
-                      sidebarLayout(
-                        sidebarPanel(width = 4,
-                                     shiny::p(
-                                       br(),
-                                       "Select a cancer and download annotations.",
-                                       br(),
-                                       "The drug annotation are display on the right table.",
-                                       br(),
-                                       "Here are two types of annotation files for different methods.",
-                                       br(),
-                                     ),
-                                     selectInput("an_es_input","Please select cancer",
-                                                 choices = disinfo_vector2,
-                                                 selected = "BRCA"),
-                                     # selectInput("an_es_input_type","Step 2. Select annotation type",
-                                     #             choices = c("Area Under Curve(AUC)" = "AUC",
-                                     #                         "Enrichment Score(ES)" = "ES"),
-                                     #             selected = "AUC"),
-                                     shiny::br(),
-                                     downloadButton("run_an_es","Download annotations", class = "btn-success"),
-                        ),
-                        mainPanel(id= "an_es_out",
-                                  uiOutput(outputId = "display_an_es") %>% withSpinner(),
-                                  dataTableOutput("display_an_es_tb")
-
-                        ), # main panel bracket
-                      ),
-
-             ), #Tab panel bracket
-             ),
-             
-             ###############################################.
-             ## Converter ----
-             ###############################################.
-             navbarMenu("Converter", icon = icon("table"),
-                        tabPanel("Gene", value = "ct_gene",
-                                 #Sidepanel for filtering data
-                                 sidebarLayout(
-                                   sidebarPanel(
-                                     textAreaInput("text_ctg", "Step 1. Input your signature",height = "200px"),
-                                     actionButton("runCTGdemo", "demo"),
-                                     shiny::p(),
-                                     radioButtons("format_ctg", "Step 2. Select the \"From\" ID", 
-                                                  inline = T,
-                                                  choices = c("ENTREZID", "ENSEMBL","UNIPROT","GENENAME")),
-                                     checkboxInput("header_check_ctg", label = strong("Step 3. Header or non-header?") ,
-                                                   value = TRUE),
-                                     actionButton("runCTG", "Convert", class = "btn-success")
-                                   ),
-                                   
-                                   mainPanel(id= "ctg_out",
-                                             uiOutput(outputId = "display_ctg") %>% withSpinner()
-                                   )  # main panel bracket
-                                 ),
-                                 
-                        ), #Tab panel bracket
-                        tabPanel("Drug", value = "ct_drug",
-                                 #Sidepanel for filtering data
-                                 sidebarLayout(
-                                   sidebarPanel(
-                                     textAreaInput("text_ctd", "Step 1. Input your drug ID",height = "200px"),
-                                     actionButton("runCTDdemo1", "demo1"),
-                                     actionButton("runCTDdemo2", "demo2"),
-                                     actionButton("runCTDdemo3", "demo3"),
-                                     shiny::p(),
-                                     radioButtons("format_ctd", "Step 2. Select the \"From\" ID", 
-                                                  inline = T,
-                                                  choices = 
-                                                    c("Drug Name" = "net_drug_name",
-                                                      "SMILES(Canonical)" = "canonical_smiles",
-                                                      "PubChem Cid" = "pubchem_cid",
-                                                      "InChIKeys" = "inchi_key",
-                                                      "CMAP ID(BRD-)" = "pert_id"
-                                                      )
-                                                  ),
-                                     checkboxInput("header_check_ctd", label = strong("Step 3. Header or non-header?") ,
-                                                   value = TRUE),
-                                     actionButton("runCTD", "Convert", class = "btn-success")
-                                   ),
-                                   
-                                   mainPanel(id= "ctd_out",
-                                             uiOutput(outputId = "display_ctd") %>% withSpinner()
-                                   )  # main panel bracket
-                                 ),
-                                 
-                        ), #Tab panel bracket
-                        
-                        
-                        
-                        
-             ),
-             
-             ###############################################.             
-             ##############NavBar Menu----
-             ###############################################.
-             #Starting navbarMenu to have tab with dropdown list
-             navbarMenu("Info", icon = icon("info-circle"),
-                        ###############################################.
-                        ## About ----
-                        ###############################################.
-
-                        tabPanel("Help", value = "help",
-                                 fluidRow(
-                                   column(1,
-                                          # "sidebar1"
-                                   ),
-                                   column(10,
-                                          navlistPanel(
-                                            "Help info",
-                                            tabPanel("Q1: Why we built SSP?", 
-                                                     includeMarkdown("www/info_Q1.md")
-                                                     # uiOutput(outputId = "display_Q1") %>% withSpinner()
-                                            ),
-                                            tabPanel("Q2: How to use Benchmark and interpret the results?",
-                                                     includeMarkdown("www/info_Q2.md")
-                                                     # uiOutput(outputId = "display_Q2") %>% withSpinner()
-                                            ),
-                                            tabPanel("Q3: How to use Robustness and interpret the results?",
-                                                     includeMarkdown("www/info_Q3.md")
-                                                     # uiOutput(outputId = "display_Q3") %>% withSpinner()
-                                            ),
-
-                                            tabPanel("Q4: How to query drug in Application and interpret the results?",
-                                                     includeMarkdown("www/info_Q4.md")
-                                                     # uiOutput(outputId = "display_Q4") %>% withSpinner()
-                                            ),
-                                            tabPanel("Q5: How to download data?",
-                                                     includeMarkdown("www/info_Q5.md")
-                                                     # uiOutput(outputId = "display_Q5") %>% withSpinner()
-                                            ),
-                                            tabPanel("Q6: How to get job result again?",
-                                                     includeMarkdown("www/info_Q6.md")
-                                                     # uiOutput(outputId = "display_Q6") %>% withSpinner()
-                                            ),
-                                            tabPanel("Q7: How to annotate drug?",
-                                                     includeMarkdown("www/info_Q7.md")
-                                                     # uiOutput(outputId = "display_Q7") %>% withSpinner()
-                                            ),
-                                            tabPanel("Q8: How to query drugs if I have other type signature?",
-                                                     includeMarkdown("www/info_Q8.md")
-                                                     # uiOutput(outputId = "display_Q8") %>% withSpinner()
-                                            ),
-                                            tabPanel("Q9: How to find the optimal topN and method?",
-                                                     shiny::h3("How to find the optimal topN and method?"),
-                                                     includeMarkdown("www/info_Q9_bm_ES.md"),
-                                                     includeMarkdown("www/info_Q9_bm_AUC.md"),
-                                                     # uiOutput(outputId = "display_Q9") %>% withSpinner()
-                                            ),
-                                            tabPanel("Q10: How to deployed SSP in my own computer or server?",
-                                                     includeMarkdown("www/info_Q10.md")
-                                                     # uiOutput(outputId = "display_Q10") %>% withSpinner()
-                                            ),
-                                            # tabPanel("Q11: Q&A collection from reviewers.",
-                                            #          includeMarkdown("www/info_Q11.md")
-                                            #          # uiOutput(outputId = "display_Q11") %>% withSpinner()
-                                            # ),
-                                            widths = c(4,8)
-                                          ),
-                                   ),
-                                   column(1,
-                                          # "sidebar2"
-                                   )
-                                 ),
-
-
-                                 ),#Tab panel
-                        tabPanel("Data", value = "data",
-                                 
-                                 fluidRow(
-                                   column(3,
-                                          # "sidebar1"
-                                   ),
-                                   column(7,
-                                          # shiny::h3("Download manual of SSP"),
-                                          # downloadButton("dl_manual_pdf", "Download manual", class = "btn-success"),
-                                          shiny::h3("Download demo files to perform job"),
-                                          downloadButton("dl_demo","Download Demo", class = "btn-success"),
-                                          downloadButton("dl_script","Download Script", class = "btn-success"),
-                                          shiny::br(),
-                                          shiny::h3("Download curated pharmacotranscriptomic datasets"),
-                                          pickerInput("sel_experiment_dl", label = "Select a specific pharmacotranscriptomic dataset", 
-                                                      choices=drug_num_list1 , selected = "LINCS_HEPG2_10uM_6h.rdata"
-                                          ),
-                                          downloadButton("dl_drug_exp","Download pharmacotranscriptomic dataset", class = "btn-success"),
-                                          downloadButton("dl_drug_ann","Download Drug and Experiment info", class = "btn-success"),
-                                   ),
-                                   column(2,
-                                          # "sidebar2"
-                                   )
-                                 ),
-                                 
-                        ),#Tab panel
-                        tabPanel("About", value = "about",
-
-                                 fluidRow(
-                                   column(3,
-                                          # "sidebar1"
-                                   ),
-                                   column(6,
-                                          uiOutput(outputId = "display_about") %>% withSpinner(),
-
-                                   ),
-                                   column(3,
-                                          # "sidebar2"
-                                   )
-                                 ),
-
-                        ),#Tab panel
-
-                        ###############################################.
-
-             ),# NavbarMenu bracket
-  ), #Bracket  navbarPage
-
-  div(style = "margin-bottom: 45px;"), # this adds breathing space between content and footer
-  
-  # CODE FOR STATISTICS
-  # div(
-  #   tags$script(src="//rf.revolvermaps.com/0/0/7.js?i=5jq3pohyu8j&amp;m=0&amp;c=ff0000&amp;cr1=ffffff&amp;sx=0",
-  #               async="async"
-  #   ),style = "width:0%;margin:0 auto;"
-  # ),
-  
-  tags$head(
-    tags$script(HTML("
-      var _hmt = _hmt || [];
-      (function() {
-        var hm = document.createElement('script');
-        hm.src = 'https://hm.baidu.com/hm.js?80bb4451d9bc4cbd2c38405dfa7de680';
-        var s = document.getElementsByTagName('script')[0]; 
-        s.parentNode.insertBefore(hm, s);
-      })();
-    "))
+# --------------------------------------------------------------------------
+# UI -----------------------------------------------------------------------
+# --------------------------------------------------------------------------
+ui <- page_navbar(
+  id = "intabset",
+  title = img(src = "LOGO.png", height = 38),
+  window_title = "Signature Search Polestar (SSP2)",
+  lang = "en",
+  theme = bs_theme(version = 5, bootswatch = "journal"),
+  navbar_options = navbar_options(collapsible = TRUE),
+  header = tagList(
+    useShinyjs(),
+    useSweetAlert(),
+    # introjsUI(),
+    tags$head(
+      tags$title("Signature Search Polestar"),
+      tags$link(rel = "shortcut icon", href = "favicon.ico"),
+      tags$base(target = "_blank"),
+      tags$script(HTML("
+        var _hmt = _hmt || [];
+        (function() {
+          var hm = document.createElement('script');
+          hm.src = 'https://hm.baidu.com/hm.js?80bb4451d9bc4cbd2c38405dfa7de680';
+          var s = document.getElementsByTagName('script')[0];
+          s.parentNode.insertBefore(hm, s);
+        })();
+      "))
+    )
   ),
-  
-  
-
-  # div(
-  #   tags$script("
-  #   var _hmt = _hmt || [];
-  #   (function() {
-  #     var hm = document.createElement('script');
-  #     hm.src = 'https://hm.baidu.com/hm.js?c80c4665444bb409416f091b83b97f57';
-  #     var s = document.getElementsByTagName('script')[0];
-  #     s.parentNode.insertBefore(hm, s);
-  #   })();
-  # "),style = "width:0%;margin:0 auto;"
-  # ),
-  
-  ###############################################.             
-  ##############Footer----    
   ###############################################.
-  # Copyright warning
-  tags$footer(column(6, "This website is free and open to all users and there is no login requirement."),
-              column(2, tags$a(href="mailto:jbzhangs@foxmail.com", tags$b("Contact us!"),
-                               class="externallink", style = "color: white; text-decoration: none")),
-              style = "
-   position:fixed;
-   text-align:center;
-   left: 0;
-   bottom:0;
-   width:100%;
-   z-index:1000;
-   height:40px; /* Height of the footer */
-   color: white;
-   padding: 10px;
-   font-weight: bold;
-   background-color: #1995dc"
-  )
-  ################################################.
-) #bracket tagList
-###END
+  ## Landing page ----
+  ###############################################.
+  nav_panel(
+    title = "Home",
+    icon = bs_icon("house"),
+    value = "home",
+    page_fillable(
+      div(
+        class = "px-3 py-4",
+        # Hero / intro section
+        card(
+          class = "border-0 bg-light",
+          card_body(
+            h1("Signature Search Polestar (SSP2)", class = "fw-bold"),
+            p(
+              class = "lead",
+              "A free, open-access web platform for ",
+              strong("pharmacotranscriptomic signature search"),
+              " — benchmark drug-repositioning methods, query promising drugs, and explore LINCS2020 perturbation data across cancer cell lines."
+            ),
+            p(
+              "SSP2 integrates", strong(" 9 tumor cell lines"), ", multiple perturbation concentrations and treatment times, and",
+              strong(" 12,328 genes"), " from the LINCS2020 beta dataset. It offers rigorously benchmarked Signature Search Methods (SSMs)",
+              " and reproducible drug-repurposing workflows for cancer researchers."
+            ),
+            div(
+              class = "d-flex flex-wrap gap-2 mt-2",
+              span(class = "badge bg-primary", "LINCS2020"),
+              span(class = "badge bg-secondary", "12,328 genes"),
+              span(class = "badge bg-info text-dark", "9 cell lines"),
+              span(class = "badge bg-success", "Real-time p-values"),
+              span(class = "badge bg-warning text-dark", "topN / |log2FC|")
+            )
+          )
+        ),
+        # Module cards
+        h3("Get started", class = "mt-4 mb-3"),
+        layout_column_wrap(
+          width = 1/3,
+          fill = FALSE,
+          card(
+            card_header(bs_icon("graph-up"), " Benchmark"),
+            card_body(
+              p("Evaluation of Signature Search methods based on annotation"),
+              actionButton("jump_to_bm", "Open", class = "btn-primary w-100")
+            )
+          ),
+          card(
+            card_header(bs_icon("shield-check"), " Robustness"),
+            card_body(
+              p("Evaluation of Signature Search methods based on drug self-retrieval"),
+              actionButton("jump_to_rb", "Open", class = "btn-primary w-100")
+            )
+          ),
+          card(
+            card_header(bs_icon("capsule"), " Application (Query Drugs)"),
+            card_body(
+              p("Drugs repurposing using Signature Search methods"),
+              actionButton("jump_to_sm", "Open", class = "btn-primary w-100")
+            )
+          ),
+          card(
+            card_header(bs_icon("tags"), " Annotation"),
+            card_body(
+              p("Obtain preliminary annotation of Drugs from GSDC and DRH"),
+              actionButton("jump_to_an", "Open", class = "btn-primary w-100")
+            )
+          ),
+          card(
+            card_header(bs_icon("inbox"), " Job Center"),
+            card_body(
+              p("Retrieve your query results"),
+              actionButton("jump_to_jc", "Open", class = "btn-primary w-100")
+            )
+          ),
+          card(
+            card_header(bs_icon("arrow-left-right"), " Converter"),
+            card_body(
+              p("Easily convert gene and drug identifiers"),
+              actionButton("jump_to_ct", "Open", class = "btn-primary w-100")
+            )
+          )
+        ),
+        # How it works
+        h3("How it works", class = "mt-4 mb-3"),
+        layout_column_wrap(
+          width = 1/4,
+          fill = FALSE,
+          card(
+            card_header(bs_icon("upload"), "1. Provide a signature"),
+            card_body(p("Upload an oncogenic gene signature (gene symbol + log2FC) from cell lines or patient cohorts."))
+          ),
+          card(
+            card_header(bs_icon("search"), "2. Choose a method"),
+            card_body(p("Select one or more Signature Search Methods, or integrate them via SS_all / SS_cross."))
+          ),
+          card(
+            card_header(bs_icon("capsule"), "3. Query drugs"),
+            card_body(p("Rank candidate drugs by enrichment, with real-time null distributions for p-values."))
+          ),
+          card(
+            card_header(bs_icon("bar-chart"), "4. Evaluate"),
+            card_body(p("Benchmark and robustness modules help you pick the best method for your context."))
+          )
+        ),
+        # Footer info (moved from global footer)
+        hr(class = "mt-4"),
+        div(
+          class = "d-flex justify-content-between align-items-center flex-wrap gap-2 text-muted small",
+          span("This website is free and open to all users and there is no login requirement."),
+          tags$a(href = "mailto:jbzhangs@foxmail.com", tags$b("Contact us!"), class = "link-secondary")
+        )
+      )
+    )
+  ),
 
+  ###############################################.
+  ## Benchmark ----
+  ###############################################.
+  nav_panel(
+    title = "Benchmark",
+    icon = bs_icon("graph-up"),
+    value = "benchmark",
+    layout_sidebar(
+      sidebar = sidebar(
+        id = "bm_input",
+        width = 380,
+        title = "Benchmark inputs",
+        tagList(
+          div(class = "mb-4",
+            div(class = "fw-bold mb-1",
+              step_pop(" Step 1. Select a pharmacotranscriptomic dataset", paste(
+                "SSP contains datasets of nine tumor cell lines at ",
+                as.character(strong("different concentration and treat time.")),
+                "<br>In general, we recommend user to select a dataset with more drugs and highly related to cancer of interest.",
+                "<br> The blank annotation can be obtained by clicking the button provided below. Once filled out, the annotation file could be used in step 4."
+              ))
+            ),
+            pickerInput(
+              "sel_experiment",
+              label = NULL,
+              choices = drug_num_list1,
+              selected = "LINCS_HEPG2_10uM_6h.rdata"
+            ),
+            downloadButton("dl_drug_ann_bm", "Download Blank Annotation", class = "btn-success")
+          ),
+          div(class = "mb-4",
+            div(class = "fw-bold mb-1",
+              step_pop(" Step 2. Select Signature Search methods", paste(
+                "Please select ",
+                as.character(strong("at least TWO")),
+                "methods for benchmark. More methods mean more time.",
+                as.character(strong("The time for a full-seleted job is 15~30 mins"))
+              ))
+            ),
+            awesomeCheckboxGroup(
+              "sel_ss",
+              label = NULL,
+              choices = ss_list,
+              selected = list("SS_Xsum", "SS_CMap")
+            )
+          ),
+          div(class = "mb-4",
+            div(class = "fw-bold mb-1",
+              step_pop(" Step 3. Upload oncogenic signature", paste(
+                "oncogenic signature is a gene list (gene symbol) with log2FC, derived from gene expression profile from cell lines or patient cohorts. A",
+                a(href = "demo/signature.txt", "demo signature file"),
+                "is provided.<br>If you have other identifier (e.g. EntrezID), please go to",
+                as.character(strong(" converter page")), " to convert your signature."
+              ))
+            ),
+            fileInput(
+              inputId = "file_sig",
+              label = NULL,
+              buttonLabel = "Browse...",
+              placeholder = "No file selected",
+              accept = c(".csv", ".txt")
+            )
+          ),
+          div(class = "mb-4",
+            div(class = "fw-bold mb-1",
+              step_pop(" Step 4a. Upload drug annotations (for AUC)", paste(
+                "At least upload one type annotation in 4a or 4b, also you can upload both of them. For AUC, we recommend upload a list of experimentally evaluated drugs (for example, IC50 < 10uM or IC50 > 10uM). A",
+                a(href = "demo/drug_annotation_AUC.txt", "demo drug annotation for AUC"),
+                "is provided.",
+                "<br>SSP accept drug name as input, if you have other identifier (e.g. PubchemCID), please go to",
+                as.character(strong(" converter page")), " to convert your annotation."
+              ))
+            ),
+            fileInput(
+              inputId = "file_IC50",
+              label = NULL,
+              buttonLabel = "Browse...",
+              placeholder = "No file selected",
+              accept = c(".csv", ".txt")
+            )
+          ),
+          div(class = "mb-4",
+            div(class = "fw-bold mb-1",
+              step_pop(" Step 4b. Upload drug annotations (for ES)", paste(
+                "At least upload one drug annotation in 4a or 4b, also you can upload both of them. For ES, we recommend upload a list of clinically effective drugs (for example, FDA-approved drugs). A",
+                a(href = "demo/drug_annotation_ES.txt", "demo drug annotation for ES"),
+                "is provided.",
+                "<br>SSP accept drug name as input, if you have other identifier (e.g. PubchemCID), please go to",
+                as.character(strong(" converter page")), " to convert your annotation."
+              ))
+            ),
+            fileInput(
+              inputId = "file_FDA",
+              label = NULL,
+              buttonLabel = "Browse...",
+              placeholder = "No file selected",
+              accept = c(".csv", ".txt")
+            )
+          ),
+          div(class = "mb-4",
+            div(class = "fw-bold mb-1",
+              " Step 5. Select gene filter mode"
+            ),
+            radioButtons(
+              "filter_mode_bm",
+              label = "Filter mode",
+              choices = c("topN" = "topN", "|log2FC| threshold" = "logFC"),
+              selected = "topN",
+              inline = TRUE
+            )
+          )
+        ),
+        div(
+          class = "d-grid gap-2 mt-3",
+          actionButton("runBM", "Run", class = "btn-success"),
+          actionButton("reset", "Reset", class = "btn-outline-secondary"),
+          actionButton("runBENdemo", "demo(Benchmark)", class = "btn-outline-primary")
+        )
+      ),
+      card(
+        full_screen = TRUE,
+        card_header("Benchmark results"),
+        uiOutput(outputId = "display_bm") %>% withSpinner()
+      )
+    )
+  ),
 
+  ###############################################.
+  ## Robustness ----
+  ###############################################.
+  nav_panel(
+    title = "Robustness",
+    icon = bs_icon("graph-up"),
+    value = "robustness",
+    layout_sidebar(
+      sidebar = sidebar(
+        id = "rb_input",
+        width = 380,
+        title = "Robustness inputs",
+        tagList(
+          div(class = "mb-4",
+            div(class = "fw-bold mb-1",
+              step_pop(" Step 1. Select a pharmacotranscriptomic dataset", paste(
+                "SSP contains datasets of nine tumor cell lines at ",
+                as.character(strong("different concentration and treat time.")),
+                "<br>In general, we recommend user to select a dataset with more drugs and highly related to cancer of interest"
+              ))
+            ),
+            pickerInput(
+              "sel_experiment_rb",
+              label = NULL,
+              choices = drug_num_list1,
+              selected = "LINCS_A549_1.11uM_6h.rdata"
+            )
+          ),
+          div(class = "mb-4",
+            div(class = "fw-bold mb-1",
+              step_pop(" Step 2. Select Signature Search methods", paste(
+                "Robustness pre-computes the performance of signature search methods at different datasets.<br>",
+                as.character(strong("Just select your interested methods.")),
+                "<br>The methods over average(red) are reconmmended to use in application module."
+              ))
+            ),
+            awesomeCheckboxGroup(
+              "sel_ss_rb",
+              NULL,
+              choices = ss_list,
+              selected = list("SS_Xsum", "SS_CMap", "SS_GSEA", "SS_ZhangScore", "SS_XCos")
+            )
+          )
+        ),
+        div(
+          class = "d-grid gap-2 mt-3",
+          actionButton("runRB", "Run", class = "btn-success"),
+          actionButton("reset_rb", "Reset", class = "btn-outline-secondary")
+        )
+      ),
+      card(
+        full_screen = TRUE,
+        card_header("Robustness results"),
+        uiOutput(outputId = "display_rb") %>% withSpinner()
+      )
+    )
+  ),
 
+  ###############################################.
+  ## Application ----
+  ###############################################.
+  nav_panel(
+    title = "Application (Query Drugs)",
+    icon = bs_icon("list-ul"),
+    value = "singlemethod",
+    layout_sidebar(
+      sidebar = sidebar(
+        id = "sm_input",
+        width = 380,
+        title = "Application inputs",
+        tagList(
+          div(class = "mb-4",
+            div(class = "fw-bold mb-1",
+              step_pop(" Step 1. Select module", paste(
+                as.character(strong("Single Search")),
+                " is the traditional method to query promising drugs, just like GSEA.<br>",
+                as.character(strong("SS_all")),
+                "query promising drugs integrating the results of all SSMs.<br>",
+                as.character(strong("SS_corss")),
+                " use two oncogenic signatures to query promising drugs with consensus."
+              ))
+            ),
+            pickerInput(
+              inputId = "sel_model_sm",
+              label = NULL,
+              choices = list(
+                "Single method" = "singlemethod",
+                "SS cross" = "SS_cross",
+                "SS all" = "SS_all"
+              ),
+              selected = "singlemethod"
+            )
+          ),
+          div(class = "mb-4",
+            div(class = "fw-bold mb-1",
+              " Step 2. Select Signature Search method(s)"
+            ),
+            conditionalPanel(
+              condition = "input.sel_model_sm == 'singlemethod' | input.sel_model_sm == 'SS_cross'",
+              awesomeRadio(
+                "sel_ss_sm",
+                popover("Signature Search method", HTML("Just select one method of your interest."), title = "Help"),
+                choices = ss_list,
+                selected = list("SS_GSEA")
+              )
+            ),
+            conditionalPanel(
+              condition = "input.sel_model_sm == 'SS_all'",
+              awesomeCheckboxGroup(
+                "sel_all_sm",
+                popover("Signature Search methods", HTML(paste(
+                  "Please at least two methods of your interest, More methods mean more time.",
+                  as.character(strong("The time for a full-seleted job is 20~40 mins"))
+                )), title = "Help"),
+                choices = ss_list,
+                selected = list("SS_Xsum", "SS_CMap")
+              ),
+              awesomeRadio(
+                "sel_direct_sm",
+                popover("Direction", HTML("SS_all only compare the drugs in same direction (scores both > 0 or < 0). Down is default for oncogenic signature. Other type signature is not recommended."), title = "Help"),
+                choices = sm_direct,
+                inline = TRUE,
+                selected = list("Down")
+              )
+            )
+          ),
+          div(class = "mb-4",
+            div(class = "fw-bold mb-1",
+              step_pop(" Step 3. Select a pharmacotranscriptomic dataset", paste(
+                "SSP contains datasets of nine tumor cell lines at ",
+                as.character(strong("different concentration and treat time.")),
+                "<br>In general, we recommend user to select a dataset with more drugs and highly related to cancer of interest"
+              ))
+            ),
+            pickerInput(
+              "sel_experiment_sm",
+              label = NULL,
+              choices = drug_num_list1,
+              selected = "LINCS_MCF7_10uM_6h.rdata"
+            )
+          ),
+          div(class = "mb-4",
+            div(class = "fw-bold mb-1",
+              " Step 4. Upload oncogenic signature(s)"
+            ),
+            conditionalPanel(
+              condition = "input.sel_model_sm == 'SS_all' | input.sel_model_sm == 'singlemethod'",
+              fileInput(
+                inputId = "file_sig_sm",
+                label = popover("Oncogenic signature file", HTML(paste(
+                  "Oncogenic signature is a gene list (gene symbol) with log2FC, derived from gene expression profile from cell lines or patient cohorts. A",
+                  a(href = "demo/signature.txt", "demo signature file"),
+                  "is provided.<br>If you have other identifier (e.g. EntrezID), please go to",
+                  as.character(strong(" converter page")), " to convert your signature."
+                )), title = "Help"),
+                buttonLabel = "Browse...",
+                placeholder = "No file selected",
+                accept = c(".csv", ".txt")
+              )
+            ),
+            conditionalPanel(
+              condition = "input.sel_model_sm == 'SS_cross'",
+              textInput("file_name1", label = NULL, value = "Signature1"),
+              fileInput(
+                inputId = "file_sig_sm1",
+                label = popover("Oncogenic signature file 1", HTML(paste(
+                  "oncogenic signature is a gene list (gene symbol) with log2FC, derived from gene expression profile from cell lines or patient cohorts. A",
+                  a(href = "demo/signature.txt", "demo signature file"),
+                  "is provided.<br>If you have other identifier (e.g. EntrezID), please go to",
+                  as.character(strong(" converter page")), " to convert your signature."
+                )), title = "Help"),
+                buttonLabel = "Browse...",
+                placeholder = "No file selected",
+                accept = c(".csv", ".txt")
+              ),
+              textInput("file_name2", label = NULL, value = "Signature2"),
+              fileInput(
+                inputId = "file_sig_sm2",
+                label = popover("Oncogenic signature file 2", HTML(paste(
+                  "oncogenic signature is a gene list (gene symbol) with log2FC, derived from gene expression profile from cell lines or patient cohorts. A",
+                  a(href = "demo/signature2.txt", "demo signature file"),
+                  "is provided.<br>If you have other identifier (e.g. EntrezID), please go to",
+                  as.character(strong(" converter page")), " to convert your signature."
+                )), title = "Help"),
+                buttonLabel = "Browse...",
+                placeholder = "No file selected",
+                accept = c(".csv", ".txt")
+              )
+            )
+          ),
+          div(class = "mb-4",
+            div(class = "fw-bold mb-1",
+              " Step 5. Set gene filter"
+            ),
+            radioButtons(
+              "filter_mode_sm",
+              label = "Filter mode",
+              choices = c("topN" = "topN", "|log2FC| threshold" = "logFC"),
+              selected = "topN",
+              inline = TRUE
+            ),
+            conditionalPanel(
+              condition = "input.filter_mode_sm == 'topN'",
+              numericInput(
+                "sel_topn_sm",
+                label = popover("topN", HTML(paste(
+                  "topN is determined by Benchmark or Robustness. <br>",
+                  "If this score is monotonically increasing in Benchmark and Robustness, ",
+                  "we recommend setting topN to length of oncogenic signature."
+                )), title = "Help"),
+                value = 150, min = 10, max = 489
+              )
+            ),
+            conditionalPanel(
+              condition = "input.filter_mode_sm == 'logFC'",
+              numericInput(
+                "sel_fc_sm",
+                label = "|log2FC| threshold",
+                value = 0.5, min = 0.05, max = 5, step = 0.05
+              )
+            )
+          )
+        ),
+        div(
+          class = "d-grid gap-2 mt-3",
+          actionButton("runSM", "Run", class = "btn-success"),
+          actionButton("reset_sm", "Reset", class = "btn-outline-secondary"),
+          actionButton("runAPPdemo1", "demo(Single method)", class = "btn-outline-primary"),
+          actionButton("runAPPdemo2", "demo(SS_all)", class = "btn-outline-primary"),
+          actionButton("runAPPdemo3", "demo(SS_cross)", class = "btn-outline-primary")
+        )
+      ),
+      card(
+        full_screen = TRUE,
+        card_header("Application results"),
+        uiOutput(outputId = "display_sm") %>% withSpinner()
+      )
+    )
+  ),
 
+  ###############################################.
+  ## Job Center ----
+  ###############################################.
+  nav_panel(
+    title = "Job Center",
+    icon = bs_icon("signal"),
+    value = "jobcenter",
+    layout_sidebar(
+      sidebar = sidebar(
+        id = "job_page",
+        width = 380,
+        title = "Job Center",
+        textInput("jobid_input", label = "Input Jobid", value = "BEN1712624574ZFX"),
+        div(
+          class = "d-grid gap-2 mt-3",
+          actionButton("jobid_get", "Retrieve", class = "btn-success"),
+          actionButton("reset_jc", "Reset", class = "btn-outline-secondary"),
+          actionButton("runjcBENdemo", "demo(Benchmark)", class = "btn-outline-primary"),
+          actionButton("runjcAPPdemo1", "demo(Single method)", class = "btn-outline-primary"),
+          actionButton("runjcAPPdemo2", "demo(SS_all)", class = "btn-outline-primary"),
+          actionButton("runjcAPPdemo3", "demo(SS_cross)", class = "btn-outline-primary")
+        ),
+        shiny::p(
+          br(),
+          strong("Please be aware that the \"Quick Tip\" button may become unresponsive when you're viewing identical result types across two different modules, such as seeing AUC in both the Job Center and Benchmark, or SS_all in both the Job Center and Application."),
+          strong("In such cases, kindly use the \"Reset\" button within the respective module to reactivate the \"Quick Tip\" functionality in the other module.")
+        )
+      ),
+      card(
+        full_screen = TRUE,
+        card_header("Job results"),
+        tableOutput("display_jc_info"),
+        uiOutput(outputId = "display_jc") %>% withSpinner()
+      )
+    )
+  ),
+
+  ###############################################.
+  ## Annotation ----
+  ###############################################.
+  nav_menu(
+    title = "Annotation",
+    icon = bs_icon("table"),
+    value = "annotation",
+    nav_panel(
+      title = "For AUC",
+      value = "an_auc",
+      layout_sidebar(
+        sidebar = sidebar(
+          width = 350,
+          title = "AUC annotation",
+          shiny::p(
+            br(),
+            "Select a cancer and download annotations.",
+            br(),
+            "The drug annotation are display on the right table.",
+            br(),
+            "Here are two types of annotation files for different methods.",
+            br()
+          ),
+          selectInput(
+            "an_auc_input",
+            "Please select cancer",
+            choices = disinfo_vector,
+            selected = "PRAD"
+          ),
+          shiny::br(),
+          downloadButton("run_an_auc", "Download annotations", class = "btn-success")
+        ),
+        card(
+          full_screen = TRUE,
+          card_header("AUC annotations"),
+          uiOutput(outputId = "display_an_auc") %>% withSpinner(),
+          dataTableOutput("display_an_auc_tb")
+        )
+      )
+    ),
+    nav_panel(
+      title = "For ES",
+      value = "an_es",
+      layout_sidebar(
+        sidebar = sidebar(
+          width = 350,
+          title = "ES annotation",
+          shiny::p(
+            br(),
+            "Select a cancer and download annotations.",
+            br(),
+            "The drug annotation are display on the right table.",
+            br(),
+            "Here are two types of annotation files for different methods.",
+            br()
+          ),
+          selectInput(
+            "an_es_input",
+            "Please select cancer",
+            choices = disinfo_vector2,
+            selected = "BRCA"
+          ),
+          shiny::br(),
+          downloadButton("run_an_es", "Download annotations", class = "btn-success")
+        ),
+        card(
+          full_screen = TRUE,
+          card_header("ES annotations"),
+          uiOutput(outputId = "display_an_es") %>% withSpinner(),
+          dataTableOutput("display_an_es_tb")
+        )
+      )
+    )
+  ),
+
+  ###############################################.
+  ## Converter ----
+  ###############################################.
+  nav_menu(
+    title = "Converter",
+    icon = bs_icon("table"),
+    value = "converter",
+    nav_panel(
+      title = "Gene",
+      value = "ct_gene",
+      layout_sidebar(
+        sidebar = sidebar(
+          width = 350,
+          title = "Gene converter",
+          textAreaInput("text_ctg", "Step 1. Input your signature", height = "200px"),
+          actionButton("runCTGdemo", "demo", class = "btn-outline-primary"),
+          shiny::p(),
+          radioButtons(
+            "format_ctg",
+            "Step 2. Select the \"From\" ID",
+            inline = TRUE,
+            choices = c("ENTREZID", "ENSEMBL", "UNIPROT", "GENENAME")
+          ),
+          checkboxInput(
+            "header_check_ctg",
+            label = strong("Step 3. Header or non-header?"),
+            value = TRUE
+          ),
+          actionButton("runCTG", "Convert", class = "btn-success")
+        ),
+        card(
+          full_screen = TRUE,
+          card_header("Gene conversion results"),
+          uiOutput(outputId = "display_ctg") %>% withSpinner()
+        )
+      )
+    ),
+    nav_panel(
+      title = "Drug",
+      value = "ct_drug",
+      layout_sidebar(
+        sidebar = sidebar(
+          width = 350,
+          title = "Drug converter",
+          textAreaInput("text_ctd", "Step 1. Input your drug ID", height = "200px"),
+          actionButton("runCTDdemo1", "demo1", class = "btn-outline-primary"),
+          actionButton("runCTDdemo2", "demo2", class = "btn-outline-primary"),
+          actionButton("runCTDdemo3", "demo3", class = "btn-outline-primary"),
+          shiny::p(),
+          radioButtons(
+            "format_ctd",
+            "Step 2. Select the \"From\" ID",
+            inline = TRUE,
+            choices = c(
+              "Drug Name" = "net_drug_name",
+              "SMILES(Canonical)" = "canonical_smiles",
+              "PubChem Cid" = "pubchem_cid",
+              "InChIKeys" = "inchi_key",
+              "CMAP ID(BRD-)" = "pert_id"
+            )
+          ),
+          checkboxInput(
+            "header_check_ctd",
+            label = strong("Step 3. Header or non-header?"),
+            value = TRUE
+          ),
+          actionButton("runCTD", "Convert", class = "btn-success")
+        ),
+        card(
+          full_screen = TRUE,
+          card_header("Drug conversion results"),
+          uiOutput(outputId = "display_ctd") %>% withSpinner()
+        )
+      )
+    )
+  ),
+
+  ###############################################.
+  ## Info ----
+  ###############################################.
+  nav_menu(
+    title = "Info",
+    icon = bs_icon("info-circle"),
+    value = "info",
+    nav_panel(
+      title = "Help",
+      value = "help",
+      layout_sidebar(
+        sidebar = sidebar(
+          width = 300,
+          title = "Help topics",
+          # Nav-like help menu using radio buttons for selecting help content
+          radioButtons(
+            "help_topic",
+            label = NULL,
+            choices = c(
+              "Q1: Why we built SSP?" = "q1",
+              "Q2: Benchmark" = "q2",
+              "Q3: Robustness" = "q3",
+              "Q4: Application" = "q4",
+              "Q5: Download data" = "q5",
+              "Q6: Retrieve job" = "q6",
+              "Q7: Annotate drug" = "q7",
+              "Q8: Other signature types" = "q8",
+              "Q9: Optimal topN/method" = "q9",
+              "Q10: Deploy SSP" = "q10"
+            ),
+            selected = "q1"
+          )
+        ),
+        card(
+          full_screen = TRUE,
+          card_header("Help documentation"),
+          uiOutput("display_help") %>% withSpinner()
+        )
+      )
+    ),
+    nav_panel(
+      title = "Data",
+      value = "data",
+      page_fluid(
+        div(
+          style = "max-width: 900px; margin: 0 auto;",
+          h3("Download demo files to perform job"),
+          downloadButton("dl_demo", "Download Demo", class = "btn-success"),
+          downloadButton("dl_script", "Download Script", class = "btn-success"),
+          br(), br(),
+          h3("Download curated pharmacotranscriptomic datasets"),
+          pickerInput(
+            "sel_experiment_dl",
+            label = "Select a specific pharmacotranscriptomic dataset",
+            choices = drug_num_list1,
+            selected = "LINCS_HEPG2_10uM_6h.rdata"
+          ),
+          downloadButton("dl_drug_exp", "Download pharmacotranscriptomic dataset", class = "btn-success"),
+          downloadButton("dl_drug_ann", "Download Drug and Experiment info", class = "btn-success")
+        )
+      )
+    ),
+    nav_panel(
+      title = "About",
+      value = "about",
+      page_fluid(
+        div(
+          style = "max-width: 900px; margin: 0 auto;",
+          uiOutput(outputId = "display_about") %>% withSpinner()
+        )
+      )
+    )
+  ),
+  nav_item(input_dark_mode(), class = "ms-auto")
+)
+# --------------------------------------------------------------------------
+# Server --------------------------------------------------------------------
+# --------------------------------------------------------------------------
 serverLoaded <- FALSE
 
-###############################################.             
-##############Server----    
-###############################################.
 server <- function(input, output, session) {
 
   ## 在启动时判断sever是否加载完全（主要是按钮能否有反应）
@@ -866,11 +813,11 @@ server <- function(input, output, session) {
     sendSweetAlert(
       session = session,
       title = "Welcome to SSP",
-      text = "SSP is initializating. Please wait until the window closed." ,
+      text = "SSP is initializating. Please wait until the window closed.",
       type = "info",
       btn_labels = NA,
       closeOnClickOutside = FALSE,
-      showCloseButton = FALSE,
+      showCloseButton = FALSE
     )
   }
 
@@ -878,84 +825,90 @@ server <- function(input, output, session) {
     closeSweetAlert()
     serverLoaded <<- TRUE
   })
-  
+
   ###############################################.
   ## Sourcing tab code  ----
   ###############################################.
-  # Sourcing file with server code
-  source(file.path("tab_benchmark.R"),  local = TRUE)$value # benchmark tab
-  source(file.path("tab_robustness.R"),  local = TRUE)$value # robustness tab
-  source(file.path("tab_application.R"),  local = TRUE)$value # application tab
-  source(file.path("tab_jobcenter.R"),  local = TRUE)$value # jobcenter tab
-  # source(file.path("data_tab.R"),  local = TRUE)$value # data tab
-  source(file.path("tab_info.R"),  local = TRUE)$value # info tab
-  source(file.path("tab_converter.R"),  local = TRUE)$value # converter tab
-  
-  ### 2023年10月1日新增部分 ###
-  source(file.path("tab_annotation.R"),  local = TRUE)$value # annotation tab
-  ### 2023年10月1日新增部分 ###
-  
-  ### 2024年1月17日新增部分 ###
-  source(file.path("tab_utils.R"),  local = TRUE)$value # annotation tab
-  ### 2023年10月1日新增部分 ###
-  
-  ### 2023年12月19日新增部分 ###
-  addResourcePath(prefix = "demo", directoryPath = "demo") # 添加下载路径，用于提供单独的demofile的下载！
-  
-    ### 2023年12月19日新增部分 ###
-  
+  source(file.path("tab_benchmark.R"),  local = TRUE)$value
+  source(file.path("tab_robustness.R"),  local = TRUE)$value
+  source(file.path("tab_application.R"),  local = TRUE)$value
+  source(file.path("tab_jobcenter.R"),  local = TRUE)$value
+  # source(file.path("data_tab.R"),  local = TRUE)$value
+  source(file.path("tab_info.R"),  local = TRUE)$value
+  source(file.path("tab_converter.R"),  local = TRUE)$value
+  source(file.path("tab_annotation.R"),  local = TRUE)$value
+  source(file.path("tab_utils.R"),  local = TRUE)$value
+
+  addResourcePath(prefix = "demo", directoryPath = "demo")
+
+  # Help topic reactive output
+  output$display_help <- renderUI({
+    topic <- input$help_topic
+    md_file <- switch(
+      topic,
+      q1 = "www/info_Q1.md",
+      q2 = "www/info_Q2.md",
+      q3 = "www/info_Q3.md",
+      q4 = "www/info_Q4.md",
+      q5 = "www/info_Q5.md",
+      q6 = "www/info_Q6.md",
+      q7 = "www/info_Q7.md",
+      q8 = "www/info_Q8.md",
+      q9 = "www/info_Q9.md",
+      q10 = "www/info_Q10.md",
+      "www/info_Q1.md"
+    )
+    if (topic == "q9") {
+      tagList(
+        shiny::h3("How to find the optimal topN and method?"),
+        includeMarkdown("www/info_Q9_bm_ES.md"),
+        includeMarkdown("www/info_Q9_bm_AUC.md")
+      )
+    } else {
+      includeMarkdown(md_file)
+    }
+  })
 
   observeEvent(input$jump_to_bm, {
-    updateTabsetPanel(session, "intabset", selected = "benchmark")
+    nav_select(id = "intabset", selected = "benchmark", session = session)
   })
-  
+
   observeEvent(input$jump_to_rb, {
-    updateTabsetPanel(session, "intabset", selected = "robustness")
+    nav_select(id = "intabset", selected = "robustness", session = session)
   })
-  
+
   observeEvent(input$jump_to_sm, {
-    updateTabsetPanel(session, "intabset", selected = "singlemethod")
+    nav_select(id = "intabset", selected = "singlemethod", session = session)
   })
 
   observeEvent(input$jump_to_jc, {
-    updateTabsetPanel(session, "intabset", selected = "jobcenter")
+    nav_select(id = "intabset", selected = "jobcenter", session = session)
   })
-  
-  ### 2023年10月1日新增部分 ###
+
   observeEvent(input$jump_to_an, {
-    updateTabsetPanel(session, "intabset", selected = "an_es")
+    nav_select(id = "intabset", selected = "an_es", session = session)
   })
-  ### 2023年10月1日新增部分end ###
-  
+
   observeEvent(input$jump_to_ct, {
-    updateTabsetPanel(session, "intabset", selected = "ct_gene")
+    nav_select(id = "intabset", selected = "ct_gene", session = session)
   })
-  
+
   # 重置
   observeEvent(input$btn_landing, {
     showModal(modalDialog(
       includeMarkdown("www/info_homepage.md"),
       title = "Guidence for New User",
       size = "l",
-      easyClose = T
+      easyClose = TRUE
     ))
   })
 
   # 保存当前的sessioninfo用于部署包
   # sI <- (.packages())
-  # save(sI,file = "sessioninfo.rdata")
+  # save(sI, file = "sessioninfo.rdata")
   # Run JavaScript code to get the user's IP address
 
 }
 
-
-
-
-
-
-
-###############################################.             
-##############Running Code----    
-###############################################.
-# Run the application 
+# Run the application
 shinyApp(ui = ui, server = server)

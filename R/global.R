@@ -7,7 +7,8 @@
 ############################.
 library(shiny)
 library(shinyBS) #modals
-library(shinythemes) # layouts for shiny
+library(bslib)        # Bootstrap 5 modern UI
+library(bsicons)      # Bootstrap icons
 library(dplyr) # data manipulation
 library(ggplot2) #data visualization
 library(DT) # for data tables
@@ -23,7 +24,7 @@ library(shinycssloaders) #for loading icons, see line below
 # it uses github version devtools::install_github("andrewsali/shinycssloaders")
 # This is to avoid issues with loading symbols behind charts and perhaps with bouncing of app
 library(rmarkdown)
-
+library(thematic) # match plots to app theme
 library(pROC)
 library(dplyr)
 library(rio)
@@ -41,18 +42,11 @@ load("data_preload/annotation/disinfo_vector.Rdata")
 load("data_preload/annotation/disinfo_vector2.Rdata")
 load("data_preload/others/landmark.rdata")
 
-#Creating big boxes for main tabs in the landing page (see ui for formatting css)
-lp_main_box <- function(title_box, image_name, button_name, description) {
-  div(class="landing-page-box",
-      div(title_box, class = "landing-page-box-title"),
-      div(description, class = "landing-page-box-description"),
-      div(class = "landing-page-icon", style= paste0("background-image: url(", image_name, ".png);
-          background-size: auto 80%; background-position: center; background-repeat: no-repeat; ")),
-      actionButton(button_name, NULL, class="landing-page-button")
-      )
+# Step 标题即 popover 触发（点击），无 ? 图标，统一为 popover
+# 参考 bslib Shiny Workflows 4.6：popovers 由触发元素（此处为标题文字）点击展开
+step_pop <- function(title, help, popover_title = "Help") {
+  popover(title, HTML(help), title = popover_title)
 }
-
-
 
 
 
@@ -107,7 +101,9 @@ name_for_res_col <- data.frame(
   signature_file4="Signature file 2 name",
   signature_name1="Signature annotation 1",
   signature_name2="Signature annotation 1",
-  sel_num_gene="Number of gene used"
+  sel_num_gene="Number of gene used",
+  filter_mode="Filter mode",
+  filter_value="Filter value"
 )
 
 # 将多个算法输出的结果进行替换
