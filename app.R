@@ -30,7 +30,7 @@ options(shiny.sanitize.errors = TRUE)
 ui <- page_navbar(
   id = "intabset",
   title = img(src = "LOGO.png", height = 38),
-  window_title = "Signature Search Polestar (SSP2)",
+  window_title = "Signature Search Polestar 2 (SSP2)",
   lang = "en",
   theme = bs_theme(version = 5, bootswatch = "journal"),
   navbar_options = navbar_options(collapsible = TRUE),
@@ -39,7 +39,7 @@ ui <- page_navbar(
     useSweetAlert(),
     # introjsUI(),
     tags$head(
-      tags$title("Signature Search Polestar"),
+      tags$title("Signature Search Polestar 2"),
       tags$link(rel = "shortcut icon", href = "favicon.ico"),
       tags$base(target = "_blank"),
       tags$script(HTML("
@@ -67,7 +67,7 @@ ui <- page_navbar(
         card(
           class = "border-0 bg-light",
           card_body(
-            h1("Signature Search Polestar (SSP2)", class = "fw-bold"),
+            h1("Signature Search Polestar 2 (SSP2)", class = "fw-bold"),
             p(
               class = "lead",
               "A free, open-access web platform for ",
