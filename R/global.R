@@ -42,10 +42,17 @@ load("data_preload/annotation/disinfo_vector.Rdata")
 load("data_preload/annotation/disinfo_vector2.Rdata")
 load("data_preload/others/landmark.rdata")
 
-# Step 标题即 popover 触发（点击），无 ? 图标，统一为 popover
-# 参考 bslib Shiny Workflows 4.6：popovers 由触发元素（此处为标题文字）点击展开
+# Step 标题后显示一个 ? 问号图标，点击该图标弹出说明文字
+# 参考 bslib Shiny Workflows 4.6：popovers 由触发元素点击展开
 step_pop <- function(title, help, popover_title = NULL) {
-  popover(title, HTML(help), title = popover_title)
+  help_icon <- span(
+    bs_icon("question-circle"),
+    class = "step-pop-help ms-1",
+    style = "cursor: help; color: #0d6efd; vertical-align: -0.1em;"
+  ) |>
+    popover(HTML(help), title = popover_title)
+
+  tagList(title, help_icon)
 }
 
 

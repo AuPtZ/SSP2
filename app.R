@@ -65,11 +65,12 @@ ui <- page_navbar(
         class = "px-3 py-4",
         # Hero / intro section
         card(
-          class = "border-0 bg-light",
+          class = "border-0",
           card_body(
+            class = "mt-4 mb-3",
             h1("Signature Search Polestar 2 (SSP2)", class = "fw-bold"),
             p(
-              class = "lead",
+              # class = "lead",
               "A free, open-access web platform for ",
               strong("pharmacotranscriptomic signature search"),
               " — benchmark drug-repositioning methods, query promising drugs, and explore LINCS2020 perturbation data across cancer cell lines."
@@ -78,18 +79,16 @@ ui <- page_navbar(
               "SSP2 integrates", strong(" 9 tumor cell lines"), ", multiple perturbation concentrations and treatment times, and",
               strong(" 12,328 genes"), " from the LINCS2020 beta dataset. It offers rigorously benchmarked Signature Search Methods (SSMs)",
               " and reproducible drug-repurposing workflows for cancer researchers."
-            ),
-            div(
-              class = "d-flex flex-wrap gap-2 mt-2",
-              span(class = "badge bg-primary", "LINCS2020"),
-              span(class = "badge bg-secondary", "12,328 genes"),
-              span(class = "badge bg-info text-dark", "9 cell lines"),
-              span(class = "badge bg-success", "Real-time p-values"),
-              span(class = "badge bg-warning text-dark", "topN / |log2FC|")
-            )
-          )
-        ),
-        # Module cards
+            ) ,
+            # div(
+            #   class = "d-flex flex-wrap gap-2 mt-2",
+            #   span(class = "badge bg-primary", "LINCS2020"),
+            #   span(class = "badge bg-secondary", "12,328 genes"),
+            #   span(class = "badge bg-info text-dark", "9 cell lines"),
+            #   span(class = "badge bg-success", "Real-time p-values"),
+            #   span(class = "badge bg-warning text-dark", "topN / |log2FC|")
+            # )
+            # Module cards
         h3("Get started", class = "mt-4 mb-3"),
         layout_column_wrap(
           width = 1/3,
@@ -158,7 +157,10 @@ ui <- page_navbar(
             card_header(bs_icon("bar-chart"), "4. Evaluate"),
             card_body(p("Benchmark and robustness modules help you pick the best method for your context."))
           )
+        )
+          )
         ),
+        
         # Footer info (moved from global footer)
         hr(class = "mt-4"),
         div(
@@ -440,18 +442,22 @@ ui <- page_navbar(
           ),
           div(class = "mb-4",
             div(class = "fw-bold mb-1",
-              " Step 4. Upload oncogenic signature(s)"
+              step_pop(" Step 4. Upload oncogenic signature(s)", HTML(paste(
+                "Oncogenic signature is a gene list (gene symbol) with log2FC, derived from gene expression profile from cell lines or patient cohorts.",
+                "For single method / SS_all, upload one signature (a",
+                a(href = "demo/signature.txt", "demo signature file"),
+                "is provided). For SS_cross, upload two signatures (signature 2",
+                a(href = "demo/signature2.txt", "demo signature file 2"),
+                "is provided).",
+                "<br>If you have other identifier (e.g. EntrezID), please go to",
+                as.character(strong(" converter page")), " to convert your signature."
+              )))
             ),
             conditionalPanel(
               condition = "input.sel_model_sm == 'SS_all' | input.sel_model_sm == 'singlemethod'",
               fileInput(
                 inputId = "file_sig_sm",
-                label = popover("Oncogenic signature file", HTML(paste(
-                  "Oncogenic signature is a gene list (gene symbol) with log2FC, derived from gene expression profile from cell lines or patient cohorts. A",
-                  a(href = "demo/signature.txt", "demo signature file"),
-                  "is provided.<br>If you have other identifier (e.g. EntrezID), please go to",
-                  as.character(strong(" converter page")), " to convert your signature."
-                )), title = "Help"),
+                label = "Oncogenic signature file",
                 buttonLabel = "Browse...",
                 placeholder = "No file selected",
                 accept = c(".csv", ".txt")
@@ -462,12 +468,7 @@ ui <- page_navbar(
               textInput("file_name1", label = NULL, value = "Signature1"),
               fileInput(
                 inputId = "file_sig_sm1",
-                label = popover("Oncogenic signature file 1", HTML(paste(
-                  "oncogenic signature is a gene list (gene symbol) with log2FC, derived from gene expression profile from cell lines or patient cohorts. A",
-                  a(href = "demo/signature.txt", "demo signature file"),
-                  "is provided.<br>If you have other identifier (e.g. EntrezID), please go to",
-                  as.character(strong(" converter page")), " to convert your signature."
-                )), title = "Help"),
+                label = "Oncogenic signature file 1",
                 buttonLabel = "Browse...",
                 placeholder = "No file selected",
                 accept = c(".csv", ".txt")
@@ -475,12 +476,7 @@ ui <- page_navbar(
               textInput("file_name2", label = NULL, value = "Signature2"),
               fileInput(
                 inputId = "file_sig_sm2",
-                label = popover("Oncogenic signature file 2", HTML(paste(
-                  "oncogenic signature is a gene list (gene symbol) with log2FC, derived from gene expression profile from cell lines or patient cohorts. A",
-                  a(href = "demo/signature2.txt", "demo signature file"),
-                  "is provided.<br>If you have other identifier (e.g. EntrezID), please go to",
-                  as.character(strong(" converter page")), " to convert your signature."
-                )), title = "Help"),
+                label = "Oncogenic signature file 2",
                 buttonLabel = "Browse...",
                 placeholder = "No file selected",
                 accept = c(".csv", ".txt")
