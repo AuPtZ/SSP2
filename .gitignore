@@ -17,3 +17,5 @@ data_preload/annotation/
 forreview/
 forreview2/
 data_preload/robustness_100_480/
+app_cache/
+*.pdf
