@@ -516,55 +516,44 @@ ui <- page_navbar(
           ),
           div(
             class = "mb-4",
-            div(
-              class = "fw-bold mb-1",
-              " Step 2. Select Signature Search method(s)"
-            ),
-            conditionalPanel(
-              condition = "input.sel_model_sm == 'singlemethod' | input.sel_model_sm == 'SS_cross'",
-              awesomeRadio(
-                "sel_ss_sm",
-                popover(
-                  "Signature Search method",
-                  HTML("Just select one method of your interest."),
-                  title = "Help"
-                ),
-                choices = ss_list,
-                selected = list("SS_GSEA")
-              )
-            ),
-            conditionalPanel(
-              condition = "input.sel_model_sm == 'SS_all'",
-              awesomeCheckboxGroup(
-                "sel_all_sm",
-                popover(
-                  "Signature Search methods",
-                  HTML(paste(
-                    "Please at least two methods of your interest, More methods mean more time.",
-                    as.character(strong(
-                      "The time for a full-seleted job is 20~40 mins"
-                    ))
-                  )),
-                  title = "Help"
-                ),
-                choices = ss_list,
-                selected = list("SS_Xsum", "SS_CMap")
+              div(
+                class = "fw-bold mb-1",
+                step_pop(
+                  " Step 2. Select Signature Search method(s)",
+                  paste(
+                    "<strong>singlemethod / SS_cross:</strong> Just select one method of your interest.<br>",
+                    "<strong>SS_all:</strong> Please select at least two methods of your interest. More methods mean more time. ",
+                    as.character(strong("The time for a full-selected job is 20~40 mins.")), "<br>",
+                    "<strong>Direction (SS_all):</strong> SS_all only compares drugs in the same direction (scores both > 0 or < 0). Down is default for oncogenic signature; other signature types are not recommended."
+                  )
+                )
               ),
-              awesomeRadio(
-                "sel_direct_sm",
-                popover(
-                  "Direction",
-                  HTML(
-                    "SS_all only compare the drugs in same direction (scores both > 0 or < 0). Down is default for oncogenic signature. Other type signature is not recommended."
-                  ),
-                  title = "Help"
+              conditionalPanel(
+                condition = "input.sel_model_sm == 'singlemethod' | input.sel_model_sm == 'SS_cross'",
+                awesomeRadio(
+                  "sel_ss_sm",
+                  label = NULL,
+                  choices = ss_list,
+                  selected = list("SS_GSEA")
+                )
+              ),
+              conditionalPanel(
+                condition = "input.sel_model_sm == 'SS_all'",
+                awesomeCheckboxGroup(
+                  "sel_all_sm",
+                  label = NULL,
+                  choices = ss_list,
+                  selected = list("SS_Xsum", "SS_CMap")
                 ),
-                choices = sm_direct,
-                inline = TRUE,
-                selected = list("Down")
+                awesomeRadio(
+                  "sel_direct_sm",
+                  label = NULL,
+                  choices = sm_direct,
+                  inline = TRUE,
+                  selected = list("Down")
+                )
               )
-            )
-          ),
+            ),
           div(
             class = "mb-4",
             div(
