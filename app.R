@@ -35,7 +35,9 @@ ui <- page_navbar(
   title = img(src = "LOGO.png", height = 38),
   window_title = "Signature Search Polestar 2 (SSP2)",
   lang = "en",
-  theme = bs_theme(version = 5, bootswatch = "journal"),
+  theme = bs_theme(version = 5, bootswatch = "journal",
+  base_font = font_google("News Cycle"),
+),
   navbar_options = navbar_options(collapsible = TRUE),
   header = tagList(
     useShinyjs(),

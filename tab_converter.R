@@ -65,12 +65,10 @@ if(T){
             shiny::p(),
             shiny::strong("Please note that output file only contains successfully mapped genes."),
             shiny::p(),
-            column(6, 
-                   shiny::h4("Input Preview"),
-                   renderDataTable(df_ctg)),
-            column(6, 
-                   shiny::h4("Output Preview"), 
-                   renderDataTable(rv_ctg$df_ctg ))
+            layout_columns(
+              tagList(shiny::h4("Input Preview"),  renderDataTable(df_ctg)),
+              tagList(shiny::h4("Output Preview"), renderDataTable(rv_ctg$df_ctg))
+            )
           )
         }) # renderUI
         
@@ -257,12 +255,11 @@ if(T){
             shiny::strong("Please note that output file only contains successfully mapped drugs."),
             shiny::p(),
 
-            column(5, 
-                   shiny::h4("Input Preview"),
-                   renderDataTable(df_ctd,options = list(searching = FALSE))),
-            column(7, 
-                   shiny::h4("Output Preview"), 
-                   renderDataTable(rv_ctd$df_ctd))
+            layout_columns(
+              widths = c(5, 7),
+              tagList(shiny::h4("Input Preview"),  renderDataTable(df_ctd, options = list(searching = FALSE))),
+              tagList(shiny::h4("Output Preview"), renderDataTable(rv_ctd$df_ctd))
+            )
           )
         }) # renderUI
         
