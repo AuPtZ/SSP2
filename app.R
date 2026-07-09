@@ -282,7 +282,7 @@ ui <- page_navbar(
             ),
             radioButtons(
               "filter_mode_bm",
-              label = "Filter mode",
+              label = NULL,
               choices = c("topN" = "topN", "|log2FC| threshold" = "logFC"),
               selected = "topN",
               inline = TRUE
@@ -494,7 +494,7 @@ ui <- page_navbar(
             ),
             radioButtons(
               "filter_mode_sm",
-              label = "Filter mode",
+              label = NULL,
               choices = c("topN" = "topN", "|log2FC| threshold" = "logFC"),
               selected = "topN",
               inline = TRUE
@@ -503,11 +503,7 @@ ui <- page_navbar(
               condition = "input.filter_mode_sm == 'topN'",
               numericInput(
                 "sel_topn_sm",
-                label = popover("topN", HTML(paste(
-                  "topN is determined by Benchmark or Robustness. <br>",
-                  "If this score is monotonically increasing in Benchmark and Robustness, ",
-                  "we recommend setting topN to length of oncogenic signature."
-                )), title = "Help"),
+                label = NULL,
                 value = 150, min = 10, max = 489
               )
             ),
@@ -515,7 +511,7 @@ ui <- page_navbar(
               condition = "input.filter_mode_sm == 'logFC'",
               numericInput(
                 "sel_fc_sm",
-                label = "|log2FC| threshold",
+                label = NULL,
                 value = 0.5, min = 0.05, max = 5, step = 0.05
               )
             )
