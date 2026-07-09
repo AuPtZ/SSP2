@@ -14,14 +14,10 @@ library(shinyWidgets)
 library(shinyBS)
 library(shinycssloaders)
 library(shinylogs)
-# library(rintrojs)
 library(future)
 library(promises)
 library(htmltools)
-# 并行后端统一使用多会话方案，worker 数由 get_cores() 动态决定。
-# 移除 plan(future.callr::callr)：future.callr 仅装在 R-4.3 用户库，
-# 在当前 R-4.4 / Positron 启动环境下可能缺失，导致启动期报错、
-# 应用永远打印不出 "Listening on" URL 而超时；且业务代码未使用 callr。
+
 plan(multisession, workers = get_cores())
 
 shinyOptions(cache = cachem::cache_mem(max_size = 1000e6))
