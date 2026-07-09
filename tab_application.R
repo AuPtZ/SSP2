@@ -289,9 +289,9 @@ judge_sm <- function(){
     
     # 读取文件以后判定
     if(!(is.null(input$file_sig_sm1$datapath) | is.null(input$file_sig_sm2$datapath))){
-      sig21 <- rio::import(input$file_sig_sm2$datapath)
+      sig21 <- rio::import(input$file_sig_sm1$datapath)
       sig22 <- rio::import(input$file_sig_sm2$datapath)
-      if(!(all(c("Gene","log2FC" ) %in% colnames(sig21)) & all(c("Gene","log2FC" ) %in% colnames(sig21)))){
+      if(!(all(c("Gene","log2FC" ) %in% colnames(sig21)) & all(c("Gene","log2FC" ) %in% colnames(sig22)))){
         sendSweetAlert(
           session = session,
           title = "Error...",
