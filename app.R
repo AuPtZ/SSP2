@@ -37,8 +37,8 @@ ui <- page_navbar(
   lang = "en",
   theme = bs_theme(
     version = 5,
-    bootswatch = "united" #,
-    # base_font = font_google("News Cycle")
+    bootswatch = "journal" ,
+    base_font = font_google("Roboto Condensed")
   ),
   navbar_options = navbar_options(collapsible = TRUE),
   header = tagList(
@@ -403,7 +403,7 @@ ui <- page_navbar(
   ###############################################.
   nav_panel(
     title = "Robustness",
-    icon = bs_icon("graph-up"),
+    icon = bs_icon("shield-check"),
     value = "robustness",
     layout_sidebar(
       sidebar = sidebar(
@@ -479,7 +479,7 @@ ui <- page_navbar(
   ###############################################.
   nav_panel(
     title = "Application (Query Drugs)",
-    icon = bs_icon("list-ul"),
+    icon = bs_icon("capsule"),
     value = "singlemethod",
     layout_sidebar(
       sidebar = sidebar(
@@ -703,7 +703,7 @@ ui <- page_navbar(
   ###############################################.
   nav_panel(
     title = "Job Center",
-    icon = bs_icon("signal"),
+    icon = bs_icon("inbox"),
     value = "jobcenter",
     layout_sidebar(
       sidebar = sidebar(
@@ -764,7 +764,7 @@ ui <- page_navbar(
   ###############################################.
   nav_menu(
     title = "Annotation",
-    icon = bs_icon("table"),
+    icon = bs_icon("tags"),
     value = "annotation",
     nav_panel(
       title = "For AUC",
@@ -847,7 +847,7 @@ ui <- page_navbar(
   ###############################################.
   nav_menu(
     title = "Converter",
-    icon = bs_icon("table"),
+    icon = bs_icon("arrow-left-right"),
     value = "converter",
     nav_panel(
       title = "Gene",
@@ -937,35 +937,58 @@ ui <- page_navbar(
     nav_panel(
       title = "Help",
       value = "help",
-      layout_sidebar(
-        sidebar = sidebar(
-          width = 300,
-          title = NULL,
-          # Nav-like help menu using radio buttons for selecting help content
-          radioButtons(
-            "help_topic",
-            label = NULL,
-            choices = c(
-              "Q1: Why we built SSP?" = "q1",
-              "Q2: Benchmark" = "q2",
-              "Q3: Robustness" = "q3",
-              "Q4: Application" = "q4",
-              "Q5: Download data" = "q5",
-              "Q6: Retrieve job" = "q6",
-              "Q7: Annotate drug" = "q7",
-              "Q8: Other signature types" = "q8",
-              "Q9: Optimal topN/method" = "q9",
-              "Q10: Deploy SSP" = "q10"
-            ),
-            selected = "q1"
-          )
-        ),
+    navset_pill_list(
+      widths = c(3, 9),
+      well = FALSE,
+      # 左侧竖排导航切换帮助主题（替代 radio 按钮）
+      nav_panel(
+        "Q1: Why we built SSP?", value = "q1",
+        card(title = NULL, full_screen = TRUE, includeMarkdown("www/info_Q1.md"))
+      ),
+      nav_panel(
+        "Q2: Benchmark", value = "q2",
+        card(title = NULL, full_screen = TRUE, includeMarkdown("www/info_Q2.md"))
+      ),
+      nav_panel(
+        "Q3: Robustness", value = "q3",
+        card(title = NULL, full_screen = TRUE, includeMarkdown("www/info_Q3.md"))
+      ),
+      nav_panel(
+        "Q4: Application", value = "q4",
+        card(title = NULL, full_screen = TRUE, includeMarkdown("www/info_Q4.md"))
+      ),
+      nav_panel(
+        "Q5: Download data", value = "q5",
+        card(title = NULL, full_screen = TRUE, includeMarkdown("www/info_Q5.md"))
+      ),
+      nav_panel(
+        "Q6: Retrieve job", value = "q6",
+        card(title = NULL, full_screen = TRUE, includeMarkdown("www/info_Q6.md"))
+      ),
+      nav_panel(
+        "Q7: Annotate drug", value = "q7",
+        card(title = NULL, full_screen = TRUE, includeMarkdown("www/info_Q7.md"))
+      ),
+      nav_panel(
+        "Q8: Other signature types", value = "q8",
+        card(title = NULL, full_screen = TRUE, includeMarkdown("www/info_Q8.md"))
+      ),
+      nav_panel(
+        "Q9: Optimal topN/method", value = "q9",
         card(
-          full_screen = TRUE,
-          # card_header("Help documentation"),
-          uiOutput("display_help") %>% withSpinner()
+          title = NULL, full_screen = TRUE,
+          tagList(
+            shiny::h3("How to find the optimal topN and method?"),
+            includeMarkdown("www/info_Q9_bm_ES.md"),
+            includeMarkdown("www/info_Q9_bm_AUC.md")
+          )
         )
+      ),
+      nav_panel(
+        "Q10: Deploy SSP", value = "q10",
+        card(title = NULL, full_screen = TRUE, includeMarkdown("www/info_Q10.md"))
       )
+    )
     ),
     nav_panel(
       title = "Data",
@@ -1050,34 +1073,6 @@ server <- function(input, output, session) {
   source(file.path("tab_utils.R"),  local = TRUE)$value
 
   addResourcePath(prefix = "demo", directoryPath = "demo")
-
-  # Help topic reactive output
-  output$display_help <- renderUI({
-    topic <- input$help_topic
-    md_file <- switch(
-      topic,
-      q1 = "www/info_Q1.md",
-      q2 = "www/info_Q2.md",
-      q3 = "www/info_Q3.md",
-      q4 = "www/info_Q4.md",
-      q5 = "www/info_Q5.md",
-      q6 = "www/info_Q6.md",
-      q7 = "www/info_Q7.md",
-      q8 = "www/info_Q8.md",
-      q9 = "www/info_Q9.md",
-      q10 = "www/info_Q10.md",
-      "www/info_Q1.md"
-    )
-    if (topic == "q9") {
-      tagList(
-        shiny::h3("How to find the optimal topN and method?"),
-        includeMarkdown("www/info_Q9_bm_ES.md"),
-        includeMarkdown("www/info_Q9_bm_AUC.md")
-      )
-    } else {
-      includeMarkdown(md_file)
-    }
-  })
 
   observeEvent(input$jump_to_bm, {
     nav_select(id = "intabset", selected = "benchmark", session = session)
