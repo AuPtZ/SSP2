@@ -1,11 +1,3 @@
-#
-# This is a Shiny web application. You can run the application by clicking
-# the 'Run App' button above.
-#
-# the UI Codes are modified from ScotPHO's Shiny profile platform
-# and refactored with bslib (Bootstrap 5).
-#
-
 library(shiny)
 library(shinyjs)
 library(bslib)
@@ -23,26 +15,40 @@ plan(multisession, workers = get_cores())
 shinyOptions(cache = cachem::cache_mem(max_size = 1000e6))
 options(shiny.sanitize.errors = TRUE)
 
+# 显式暴露 pickerInput 所需的 bootstrap-select 静态资源
+# （bslib / Bootstrap 5 下，shinyWidgets 自带的依赖可能被过滤，导致 .selectpicker is not a function）
+bs_select_assets <- system.file("assets", "bootstrap-select", package = "shinyWidgets")
+if (bs_select_assets != "") addResourcePath("bsselect", bs_select_assets)
+
 # --------------------------------------------------------------------------
 # UI -----------------------------------------------------------------------
 # --------------------------------------------------------------------------
 ui <- page_navbar(
   id = "intabset",
-  title = img(src = "LOGO.png", height = 38),
+  # title = img(src = "LOGO.png", height = 38),
   window_title = "Signature Search Polestar 2 (SSP2)",
   lang = "en",
   theme = bs_theme(
     version = 5,
-    bootswatch = "journal" ,
+    preset = "journal" ,
     base_font = font_google("Roboto Condensed")
   ),
-  navbar_options = navbar_options(collapsible = TRUE),
+  navbar_options = navbar_options(
+    collapsible = TRUE # ,
+    # class = "bg-primary" # ,
+    # bg = "#eb6864",
+    # fg = "white",
+    # theme = "light"
+    
+  ),
   header = tagList(
     useShinyjs(),
     useSweetAlert(),
     # introjsUI(),
     tags$head(
       tags$title("Signature Search Polestar 2"),
+      tags$script(src = "bsselect/js/bootstrap-select.min.js"),
+      tags$link(rel = "stylesheet", href = "bsselect/css/bootstrap-select.min.css"),
       tags$link(rel = "shortcut icon", href = "favicon.ico"),
       tags$base(target = "_blank"),
       tags$script(HTML(
@@ -109,19 +115,6 @@ ui <- page_navbar(
                   ),
                   actionButton(
                     "jump_to_bm",
-                    "Open",
-                    class = "btn-primary w-100"
-                  )
-                )
-              ),
-              card(
-                card_header(bs_icon("shield-check"), " Robustness"),
-                card_body(
-                  p(
-                    "Evaluation of Signature Search methods based on drug self-retrieval"
-                  ),
-                  actionButton(
-                    "jump_to_rb",
                     "Open",
                     class = "btn-primary w-100"
                   )
@@ -198,7 +191,7 @@ ui <- page_navbar(
               card(
                 card_header(bs_icon("bar-chart"), "4. Evaluate"),
                 card_body(p(
-                  "Benchmark and robustness modules help you pick the best method for your context."
+                  "Benchmark module helps you pick the best method for your context."
                 ))
               )
             )
@@ -236,7 +229,7 @@ ui <- page_navbar(
         title = NULL,
         tagList(
           div(
-            class = "mb-4",
+            class = "mb-0",
             div(
               class = "fw-bold mb-1",
               step_pop(
@@ -264,7 +257,7 @@ ui <- page_navbar(
             )
           ),
           div(
-            class = "mb-4",
+            class = "mb-0",
             div(
               class = "fw-bold mb-1",
               step_pop(
@@ -287,7 +280,7 @@ ui <- page_navbar(
             )
           ),
           div(
-            class = "mb-4",
+            class = "mb-0",
             div(
               class = "fw-bold mb-1",
               step_pop(
@@ -310,7 +303,7 @@ ui <- page_navbar(
             )
           ),
           div(
-            class = "mb-4",
+            class = "mb-0",
             div(
               class = "fw-bold mb-1",
               step_pop(
@@ -337,7 +330,7 @@ ui <- page_navbar(
             )
           ),
           div(
-            class = "mb-4",
+            class = "mb-0",
             div(
               class = "fw-bold mb-1",
               step_pop(
@@ -364,7 +357,7 @@ ui <- page_navbar(
             )
           ),
           div(
-            class = "mb-4",
+            class = "mb-0",
             div(class = "fw-bold mb-1", " Step 5. Select gene filter mode"),
             radioButtons(
               "filter_mode_bm",
@@ -394,83 +387,6 @@ ui <- page_navbar(
     )
   ),
 
-  ###############################################.
-  ## Robustness ----
-  ###############################################.
-  nav_panel(
-    title = "Robustness",
-    icon = bs_icon("shield-check"),
-    value = "robustness",
-    layout_sidebar(
-      sidebar = sidebar(
-        id = "rb_input",
-        width = 380,
-        title = NULL,
-        tagList(
-          div(
-            class = "mb-4",
-            div(
-              class = "fw-bold mb-1",
-              step_pop(
-                " Step 1. Select a pharmacotranscriptomic dataset",
-                paste(
-                  "SSP contains datasets of nine tumor cell lines at ",
-                  as.character(strong(
-                    "different concentration and treat time."
-                  )),
-                  "<br>In general, we recommend user to select a dataset with more drugs and highly related to cancer of interest"
-                )
-              )
-            ),
-            pickerInput(
-              "sel_experiment_rb",
-              label = NULL,
-              choices = drug_num_list1,
-              selected = "LINCS_A549_1.11uM_6h.rdata"
-            )
-          ),
-          div(
-            class = "mb-4",
-            div(
-              class = "fw-bold mb-1",
-              step_pop(
-                " Step 2. Select Signature Search methods",
-                paste(
-                  "Robustness pre-computes the performance of signature search methods at different datasets.<br>",
-                  as.character(strong("Just select your interested methods.")),
-                  "<br>The methods over average(red) are reconmmended to use in application module."
-                )
-              )
-            ),
-            awesomeCheckboxGroup(
-              "sel_ss_rb",
-              NULL,
-              choices = ss_list,
-              selected = list(
-                "SS_Xsum",
-                "SS_CMap",
-                "SS_GSEA",
-                "SS_ZhangScore",
-                "SS_XCos"
-              )
-            )
-          )
-        ),
-        div(
-          class = "d-grid gap-2 mt-3",
-          actionButton("runRB", "Run", class = "btn-success"),
-          actionButton("reset_rb", "Reset", class = "btn-outline-secondary")
-        )
-      ),
-      card(
-        full_screen = TRUE,
-        # card_header("Robustness results"),
-        uiOutput(outputId = "display_rb") %>% withSpinner()
-      )
-    )
-  ),
-
-  ###############################################.
   ## Application ----
   ###############################################.
   nav_panel(
@@ -484,7 +400,7 @@ ui <- page_navbar(
         title = NULL,
         tagList(
           div(
-            class = "mb-4",
+            class = "mb-0",
             div(
               class = "fw-bold mb-1",
               step_pop(
@@ -511,7 +427,7 @@ ui <- page_navbar(
             )
           ),
           div(
-            class = "mb-4",
+            class = "mb-0",
               div(
                 class = "fw-bold mb-1",
                 step_pop(
@@ -551,7 +467,7 @@ ui <- page_navbar(
               )
             ),
           div(
-            class = "mb-4",
+            class = "mb-0",
             div(
               class = "fw-bold mb-1",
               step_pop(
@@ -573,7 +489,7 @@ ui <- page_navbar(
             )
           ),
           div(
-            class = "mb-4",
+            class = "mb-0",
             div(
               class = "fw-bold mb-1",
               step_pop(
@@ -622,7 +538,7 @@ ui <- page_navbar(
             )
           ),
           div(
-            class = "mb-4",
+            class = "mb-0",
             div(class = "fw-bold mb-1", " Step 5. Set gene filter"),
             radioButtons(
               "filter_mode_sm",
@@ -935,10 +851,6 @@ ui <- page_navbar(
         card(title = NULL, full_screen = TRUE, includeMarkdown("www/info_Q2.md"))
       ),
       nav_panel(
-        "Q3: Robustness", value = "q3",
-        card(title = NULL, full_screen = TRUE, includeMarkdown("www/info_Q3.md"))
-      ),
-      nav_panel(
         "Q4: Application", value = "q4",
         card(title = NULL, full_screen = TRUE, includeMarkdown("www/info_Q4.md"))
       ),
@@ -989,7 +901,7 @@ ui <- page_navbar(
           h3("Download curated pharmacotranscriptomic datasets"),
           pickerInput(
             "sel_experiment_dl",
-            label = "Select a specific pharmacotranscriptomic dataset",
+            label = "Select a specific dataset",
             choices = drug_num_list1,
             selected = "LINCS_HEPG2_10uM_6h.rdata"
           ),
@@ -1048,7 +960,7 @@ server <- function(input, output, session) {
   ## Sourcing tab code  ----
   ###############################################.
   source(file.path("tab_benchmark.R"),  local = TRUE)$value
-  source(file.path("tab_robustness.R"),  local = TRUE)$value
+  # Robustness module removed - data generation failed
   source(file.path("tab_application.R"),  local = TRUE)$value
   source(file.path("tab_jobcenter.R"),  local = TRUE)$value
   # source(file.path("data_tab.R"),  local = TRUE)$value
@@ -1064,7 +976,6 @@ server <- function(input, output, session) {
   })
 
   observeEvent(input$jump_to_rb, {
-    nav_select(id = "intabset", selected = "robustness", session = session)
   })
 
   observeEvent(input$jump_to_sm, {
