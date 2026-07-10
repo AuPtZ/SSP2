@@ -3,9 +3,7 @@ library(shinyjs)
 library(bslib)
 library(bsicons)
 library(shinyWidgets)
-library(shinyBS)
 library(shinycssloaders)
-library(shinylogs)
 library(future)
 library(promises)
 library(htmltools)
@@ -15,10 +13,6 @@ plan(multisession, workers = get_cores())
 shinyOptions(cache = cachem::cache_mem(max_size = 1000e6))
 options(shiny.sanitize.errors = TRUE)
 
-# 显式暴露 pickerInput 所需的 bootstrap-select 静态资源
-# （bslib / Bootstrap 5 下，shinyWidgets 自带的依赖可能被过滤，导致 .selectpicker is not a function）
-bs_select_assets <- system.file("assets", "bootstrap-select", package = "shinyWidgets")
-if (bs_select_assets != "") addResourcePath("bsselect", bs_select_assets)
 
 # --------------------------------------------------------------------------
 # UI -----------------------------------------------------------------------
@@ -47,8 +41,6 @@ ui <- page_navbar(
     # introjsUI(),
     tags$head(
       tags$title("Signature Search Polestar 2"),
-      tags$script(src = "bsselect/js/bootstrap-select.min.js"),
-      tags$link(rel = "stylesheet", href = "bsselect/css/bootstrap-select.min.css"),
       tags$link(rel = "shortcut icon", href = "favicon.ico"),
       tags$base(target = "_blank"),
       tags$script(HTML(
@@ -244,7 +236,7 @@ ui <- page_navbar(
                 )
               )
             ),
-            pickerInput(
+            selectInput(
               "sel_experiment",
               label = NULL,
               choices = drug_num_list1,
@@ -415,7 +407,7 @@ ui <- page_navbar(
                 )
               )
             ),
-            pickerInput(
+            selectInput(
               inputId = "sel_model_sm",
               label = NULL,
               choices = list(
@@ -481,7 +473,7 @@ ui <- page_navbar(
                 )
               )
             ),
-            pickerInput(
+            selectInput(
               "sel_experiment_sm",
               label = NULL,
               choices = drug_num_list1,
@@ -899,7 +891,7 @@ ui <- page_navbar(
           br(),
           br(),
           h3("Download curated pharmacotranscriptomic datasets"),
-          pickerInput(
+          selectInput(
             "sel_experiment_dl",
             label = "Select a specific dataset",
             choices = drug_num_list1,

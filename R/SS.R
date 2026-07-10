@@ -15,7 +15,7 @@ if(T){
       queryUp <- as.character(queryUp)
     }
     if (!is.character(queryDown)) {
-      queryUp <- as.character(queryDown)
+      queryDown <- as.character(queryDown)
     }
     if (topN > nrow(refMatrix)/2) {
       stop("Warning: topN is lager than half\n
@@ -69,7 +69,7 @@ if(T){
       queryUp <- as.character(queryUp)
     }
     if (!is.character(queryDown)) {
-      queryUp <- as.character(queryDown)
+      queryDown <- as.character(queryDown)
     }
     matrixToRankedList <- function(refMatrix) {
       refList <- vector("list", ncol(refMatrix))
@@ -129,7 +129,7 @@ if(T){
       queryUp <- as.character(queryUp)
     }
     if (!is.character(queryDown)) {
-      queryUp <- as.character(queryDown)
+      queryDown <- as.character(queryDown)
     }
     matrixToRankedList <- function(refMatrix) {
       refList <- vector("list", ncol(refMatrix))
@@ -197,7 +197,7 @@ if(T){
       queryUp <- as.character(queryUp)
     }
     if (!is.character(queryDown)) {
-      queryUp <- as.character(queryDown)
+      queryDown <- as.character(queryDown)
     }
     matrixToRankedList <- function(refMatrix) {
       refList <- vector("list", ncol(refMatrix))
@@ -320,7 +320,7 @@ if(T){
       queryUp <- as.character(queryUp)
     }
     if (!is.character(queryDown)) {
-      queryUp <- as.character(queryDown)
+      queryDown <- as.character(queryDown)
     }
     if (topN > nrow(refMatrix)/2) {
       stop("Warning: topN is lager than half\n
@@ -374,7 +374,7 @@ if(T){
       queryUp <- as.character(queryUp)
     }
     if (!is.character(queryDown)) {
-      queryUp <- as.character(queryDown)
+      queryDown <- as.character(queryDown)
     }
     matrixToRankedList <- function(refMatrix) {
       refList <- vector("list", ncol(refMatrix))
@@ -434,7 +434,7 @@ if(T){
       queryUp <- as.character(queryUp)
     }
     if (!is.character(queryDown)) {
-      queryUp <- as.character(queryDown)
+      queryDown <- as.character(queryDown)
     }
     matrixToRankedList <- function(refMatrix) {
       refList <- vector("list", ncol(refMatrix))
@@ -501,7 +501,7 @@ if(T){
       queryUp <- as.character(queryUp)
     }
     if (!is.character(queryDown)) {
-      queryUp <- as.character(queryDown)
+      queryDown <- as.character(queryDown)
     }
     matrixToRankedList <- function(refMatrix) {
       refList <- vector("list", ncol(refMatrix))

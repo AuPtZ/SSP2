@@ -95,7 +95,7 @@ observeEvent(input$runSM, {
       req(input$file_sig_sm1$datapath)
       req(input$file_sig_sm2$datapath)
       req(input$file_name1 != "")
-      req(input$file_name1 != "")
+      req(input$file_name2 != "")
       
       i.need.logfc1 <- rio::import(input$file_sig_sm1$datapath) %>% dplyr::select(c("Gene","log2FC"))
       i.need.logfc2 <- rio::import(input$file_sig_sm2$datapath) %>% dplyr::select(c("Gene","log2FC"))
@@ -191,17 +191,16 @@ observeEvent(input$runSM, {
         
         
         # print("job finished!")
-        ###
-        observeEvent(input$display_sm_loaded, {
-          if(input$display_sm_loaded) {
-            progress_sm$inc(0.2, detail = "job finished!")
-          }
-        })
-        ###  
+        progress_sm$close()
       }
     ) %...!% (function(error){
-      # rv$output <- NULL
-      warning(error)
+      progress_sm$close()
+      sendSweetAlert(
+        session = session,
+        title = "Error...",
+        text = paste("Computation failed:", conditionMessage(error)),
+        type = "error"
+      )
     })
     
     output$display_sm <- renderUI({ 

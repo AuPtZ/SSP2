@@ -240,7 +240,7 @@ observeEvent(input$runBM, {
             )
           }) ## renderUI
         } else{
-          output$display_bm <- renderUI({ ## renderUI 
+          output$display_bm <- renderUI({ ## renderUI
             tagList(
             shiny::h3("Please Check Iput Files!"),
             tags$script(HTML("
@@ -253,17 +253,18 @@ observeEvent(input$runBM, {
             )
           }) ## renderUI
         }
-        
-        ###
-        observeEvent(input$display_bm_loaded, {
-          if(input$display_bm_loaded) {
-            progress_bm$inc(0.2, detail = "job finished!")
-          }
-        })
-        
-        ###  
+
+        progress_bm$close()
       }
-    ) %...!% stop(.)
+    ) %...!% (function(e) {
+      progress_bm$close()
+      sendSweetAlert(
+        session = session,
+        title = "Error...",
+        text = paste("Computation failed:", conditionMessage(e)),
+        type = "error"
+      )
+    })
     output$display_bm <- renderUI({ ## renderUI 
       shiny::tagList(
         shiny::h3("Loading... Please wait."),

@@ -1,5 +1,19 @@
 # benchmark和application的结果保存
 # 这个页面提供的是需要在不同页面使用的，超过2次以上的功能
+
+# 确保共享元数据表 "res" 存在（首次写入时创建，后续新增字段时自动 ALTER 扩列）
+ensure_res_table <- function(con, df1) {
+  if (!RSQLite::dbExistsTable(con, "res")) {
+    RSQLite::dbWriteTable(con, "res", df1)
+    return(invisible(NULL))
+  }
+  existing <- RSQLite::dbListFields(con, "res")
+  for (col in setdiff(names(df1), existing)) {
+    RSQLite::dbExecute(con, sprintf('ALTER TABLE res ADD COLUMN "%s"', col))
+  }
+  invisible(NULL)
+}
+
 write_in_db <- function(Jobid, Submitted_time, module_name,
                         sub_module, table_num = 1, table_res){
   # 获取公用的 filter mode 信息
@@ -113,7 +127,9 @@ write_in_db <- function(Jobid, Submitted_time, module_name,
   library(RSQLite)
   con_res <- dbConnect(RSQLite::SQLite(), "results/resinfo.db")
   # print(df1)
-  
+
+  ensure_res_table(con_res, df1)
+
   if(table_num == 1){
     # print("写入一个表1")
     # print(Jobid)

@@ -629,9 +629,9 @@ add_block <- function(num1,num2){
   ifelse(scores > 0.4, "Up", ifelse(scores < -0.4, "Down", "None"))
 }
 
-# 计算联合p值
+# 计算联合p值（逐药物 Fisher 合并）
 combine_p_values <- function(p1, p2) {
-  chi_squared_values <- -2 * sum(log(c(p1, p2)))
-  combined_p_value <- pchisq(chi_squared_values, df = 2*length(c(p1, p2)), lower.tail = FALSE)
+  chi_squared_values <- -2 * (log(p1) + log(p2))
+  combined_p_value <- pchisq(chi_squared_values, df = 4, lower.tail = FALSE)
   return(combined_p_value)
 }

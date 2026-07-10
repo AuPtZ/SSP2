@@ -141,8 +141,6 @@ rename_col_rules <- c("XSum" = "auc_xsum",
                       "Block" = "block",
                       "Method" = "method",
                       "P_adjust" = "p.adjust",
-                      "Scale_score_x" = "Scale_score.x",
-                      "Scale_score_y" = "Scale_score.y",
                       "P_value" = "pvalue"
                       
                     
