@@ -19,8 +19,8 @@ options(shiny.sanitize.errors = TRUE)
 # --------------------------------------------------------------------------
 ui <- page_navbar(
   id = "intabset",
-  # title = img(src = "LOGO.png", height = 38),
-  window_title = "Signature Search Polestar 2 (SSP2)",
+  title = bs_icon("stars"),
+  window_title = "SSP2",
   lang = "en",
   theme = bs_theme(
     version = 5,
@@ -70,15 +70,15 @@ ui <- page_navbar(
         card(
           class = "border-0",
           card_body(
-            class = "mt-4 mb-3",
+            class = "mt-0 mb-0",
             h1("Signature Search Polestar 2 (SSP2)", class = "fw-bold"),
-            p(
+            h5(
               # class = "lead",
               "A free, open-access web platform for ",
               strong("pharmacotranscriptomic signature search"),
               " — benchmark drug-repositioning methods, query promising drugs, and explore LINCS2020 perturbation data across cancer cell lines."
             ),
-            p(
+            h5(
               "SSP2 integrates",
               strong(" 9 tumor cell lines"),
               ", multiple perturbation concentrations and treatment times, and",
@@ -95,7 +95,7 @@ ui <- page_navbar(
             #   span(class = "badge bg-warning text-dark", "topN / |log2FC|")
             # )
             # Module cards
-            h3("Get started", class = "mt-4 mb-3"),
+            h3("Get started", class = "mt-0 mb-0"),
             layout_column_wrap(
               width = 1 / 3,
               fill = FALSE,
@@ -158,7 +158,7 @@ ui <- page_navbar(
               )
             ),
             # How it works
-            h3("How it works", class = "mt-4 mb-3"),
+            h3("How it works", class = "mt-0 mb-0"),
             layout_column_wrap(
               width = 1 / 4,
               fill = FALSE,
@@ -191,9 +191,9 @@ ui <- page_navbar(
         ),
 
         # Footer info (moved from global footer)
-        hr(class = "mt-4"),
+        hr(class = "mt-0"),
         div(
-          class = "d-flex justify-content-between align-items-center flex-wrap gap-2 text-muted small",
+          class = "d-flex justify-content-between align-items-center flex-wrap gap-2 text-muted",
           span(
             "This website is free and open to all users and there is no login requirement."
           ),
@@ -223,7 +223,7 @@ ui <- page_navbar(
           div(
             class = "mb-0",
             div(
-              class = "fw-bold mb-1",
+              class = "fw-bold mb-0",
               step_pop(
                 " Step 1. Select a pharmacotranscriptomic dataset",
                 paste(
@@ -251,7 +251,7 @@ ui <- page_navbar(
           div(
             class = "mb-0",
             div(
-              class = "fw-bold mb-1",
+              class = "fw-bold mb-0",
               step_pop(
                 " Step 2. Select Signature Search methods",
                 paste(
@@ -274,7 +274,7 @@ ui <- page_navbar(
           div(
             class = "mb-0",
             div(
-              class = "fw-bold mb-1",
+              class = "fw-bold mb-0",
               step_pop(
                 " Step 3. Upload oncogenic signature",
                 paste(
@@ -297,7 +297,7 @@ ui <- page_navbar(
           div(
             class = "mb-0",
             div(
-              class = "fw-bold mb-1",
+              class = "fw-bold mb-0",
               step_pop(
                 " Step 4a. Upload drug annotations (for AUC)",
                 paste(
@@ -324,7 +324,7 @@ ui <- page_navbar(
           div(
             class = "mb-0",
             div(
-              class = "fw-bold mb-1",
+              class = "fw-bold mb-0",
               step_pop(
                 " Step 4b. Upload drug annotations (for ES)",
                 paste(
@@ -350,7 +350,7 @@ ui <- page_navbar(
           ),
           div(
             class = "mb-0",
-            div(class = "fw-bold mb-1", " Step 5. Select gene filter mode"),
+            div(class = "fw-bold mb-0", " Step 5. Select gene filter mode"),
             radioButtons(
               "filter_mode_bm",
               label = NULL,
@@ -361,7 +361,7 @@ ui <- page_navbar(
           )
         ),
         div(
-          class = "d-grid gap-2 mt-3",
+          class = "d-grid gap-2 mt-0",
           actionButton("runBM", "Run", class = "btn-success"),
           actionButton("reset", "Reset", class = "btn-outline-secondary"),
           actionButton(
@@ -394,7 +394,7 @@ ui <- page_navbar(
           div(
             class = "mb-0",
             div(
-              class = "fw-bold mb-1",
+              class = "fw-bold mb-0",
               step_pop(
                 " Step 1. Select module",
                 paste(
@@ -421,7 +421,7 @@ ui <- page_navbar(
           div(
             class = "mb-0",
               div(
-                class = "fw-bold mb-1",
+                class = "fw-bold mb-0",
                 step_pop(
                   " Step 2. Select Signature Search method(s)",
                   paste(
@@ -461,7 +461,7 @@ ui <- page_navbar(
           div(
             class = "mb-0",
             div(
-              class = "fw-bold mb-1",
+              class = "fw-bold mb-0",
               step_pop(
                 " Step 3. Select a pharmacotranscriptomic dataset",
                 paste(
@@ -483,7 +483,7 @@ ui <- page_navbar(
           div(
             class = "mb-0",
             div(
-              class = "fw-bold mb-1",
+              class = "fw-bold mb-0",
               step_pop(
                 " Step 4. Upload oncogenic signature(s)",
                 HTML(paste(
@@ -531,7 +531,7 @@ ui <- page_navbar(
           ),
           div(
             class = "mb-0",
-            div(class = "fw-bold mb-1", " Step 5. Set gene filter"),
+            div(class = "fw-bold mb-0", " Step 5. Set gene filter"),
             radioButtons(
               "filter_mode_sm",
               label = NULL,
@@ -563,7 +563,7 @@ ui <- page_navbar(
           )
         ),
         div(
-          class = "d-grid gap-2 mt-3",
+          class = "d-grid gap-2 mt-0",
           actionButton("runSM", "Run", class = "btn-success"),
           actionButton("reset_sm", "Reset", class = "btn-outline-secondary"),
           actionButton(
@@ -609,7 +609,7 @@ ui <- page_navbar(
           value = "BEN1712624574ZFX"
         ),
         div(
-          class = "d-grid gap-2 mt-3",
+          class = "d-grid gap-2 mt-0",
           actionButton("jobid_get", "Retrieve", class = "btn-success"),
           actionButton("reset_jc", "Reset", class = "btn-outline-secondary"),
           actionButton(

@@ -19,3 +19,5 @@ forreview2/
 data_preload/robustness_100_480/
 app_cache/
 *.pdf
+app.R.with_robustness_backup
+results/resinfo.db
