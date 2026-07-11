@@ -21,3 +21,4 @@ app_cache/
 *.pdf
 app.R.with_robustness_backup
 results/resinfo.db
+cache/queue/*.rds

@@ -237,7 +237,11 @@ get_dr_auc_i <- function(IC50_drug,i.need.logfc,sel_exp,sel_ss,cores){
   
   IC50_GSE92742 <- exp_LINCS2020[, colnames(exp_LINCS2020) %in% IC50_drug$`Compound_name`,drop=F]
   
-  patch_auc_sum <- parallel::mclapply(seq(from=10, to= get_topn(i.need.logfc) , by=1),
+  # topN 扫描范围：下限 10，上限取「签名基因数」与 1000 的较大者，
+  # 保证至少覆盖 10-1000（签名基因更多时不丢数据；更少时超出部分基因集
+  # 已用尽，曲线自然趋于平台，无害）。get_auc_all 按 topn 值 memoise，
+  # 已算过的 topn 会命中缓存，仅新增 topn 点重新计算。
+  patch_auc_sum <- parallel::mclapply(seq(from = 10, to = max(get_topn(i.need.logfc), 1000), by = 1),
                                       get_auc_all,
                                       refMatrix = IC50_GSE92742,
                                       sig_input = i.need.logfc,
@@ -262,7 +266,8 @@ get_dr_es_i <- function(FDA_drug, i.need.logfc, sel_exp,sel_ss,cores){
 
   load(paste0("data_preload/drugexp/",sel_exp))
   
-  patch_es_sum <- parallel::mclapply(seq(from=10, to= get_topn(i.need.logfc), by=1),
+  # 同 AUC：topN 扫描上限取「签名基因数」与 1000 的较大者，覆盖 10-1000。
+  patch_es_sum <- parallel::mclapply(seq(from = 10, to = max(get_topn(i.need.logfc), 1000), by = 1),
                                      get_es_all,
                                      refMatrix = exp_LINCS2020,
                                      sig_input = i.need.logfc,

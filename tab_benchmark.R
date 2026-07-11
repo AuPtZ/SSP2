@@ -6,10 +6,7 @@
 # Generate data
 # read gctx
 # library(cmapR)
-library(future)
-library(promises)
-# plan(multisession)
-
+# 方案C：计算已迁移到独立 worker.R，模块内不再使用 future/promises
 library(memoise)
 
 # cores <- get_cores()
@@ -23,9 +20,32 @@ library(memoise)
 # 初始化
 output$display_bm <- renderUI(initial_bm)
 
+# === 方案C：作业轮询显示 ===
+rv_bm_job <- reactiveVal(NULL)   # 当前正在等待结果的 jobid
+observe({
+  jid <- rv_bm_job()
+  req(jid)
+  st <- get_job_status(jid)
+  status <- if (nrow(st) == 0) "pending" else st$status[1]
+  if (status %in% c("pending", "running")) {
+    invalidateLater(3000)         # 未完成 -> 3 秒后再查（完成后自动停止）
+  } else if (status == "error") {
+    rv_bm_job(NULL)
+    emsg <- if (nrow(st)) st$error_msg[1] else "unknown error"
+    sendSweetAlert(session, title = "Error...",
+                   text = paste("Computation failed:", emsg), type = "error")
+    output$display_bm <- renderUI(initial_bm)
+  } else {                        # done
+    rv_bm_job(NULL)
+    job_info <- read_from_db(jid)
+    output$display_bm <- renderUI({ res_plot(job_info, prefix = "bm") })
+  }
+})
+
 
 # 重置
 observeEvent(input$reset, {
+  rv_bm_job(NULL)
   reset("bm_input")
   
   # system(paste0("rm ",input$file_sig$datapath))
@@ -103,168 +123,29 @@ observeEvent(input$runBM, {
     ###
     progress_bm$inc(0.2, detail = paste("file loaded, computing"))
     ###
-    
-    # 正式的运行层
-    future_promise({ ## future 需要单独加载包，global的不行
-      library(dplyr)
-      library(tidyr)
-      library(ggplot2)
-      library(tibble)
-      library(pROC)
-      library(rio)
-      library(tidyverse)
-      
-      
-      isolate({
-        
-        # print("we are going to res_bm!")
-        res_bm <- get_benchmark(
-          IC50_drug = IC50_drug,
-          FDA_drug = FDA_drug, 
-          i.need.logfc = i.need.logfc, 
-          sel_exp = sel_exp,
-          sel_ss = sel_ss,
-          filter_mode = filter_mode
-        )
-        # save(res_bm,file = "1.rdata")
 
-        return(res_bm)
-      })
-    }, seed = TRUE) %...>% (
-      function(res_bm){
-        # print("we get result!")
-        # res_bm <- result
-        
-        ###
-        progress_bm$inc(0.6, detail = paste("get result, ploting"))
-        ###
-        
-        if(length(res_bm) ==3){
-          
-          # print(res_bm)
-          write_in_db(Jobid = jobid_bm, 
-                      Submitted_time = submitted_time, 
-                      module_name = "Benchmark",
-                      sub_module = "ALL (ES and AUC)",
-                      table_num = 2, 
-                      table_res = list(
-                        "AUC" = res_bm[[1]],
-                        "ES" = res_bm[[2]]
-                      ) )
-          
-          res_bm1 <- res_bm[[1]]
-          res_bm2 <- res_bm[[2]]
-          
-          if (filter_mode == "logFC") {
-            pic_out1 <- ggplotly(draw_dr_auc_fc(res_bm1))
-            pic_out2 <- ggplotly(draw_dr_es_fc(res_bm2))
-          } else {
-            pic_out1 <- ggplotly(draw_dr_auc(res_bm1))
-            pic_out2 <- ggplotly(draw_dr_es(res_bm2))
-          }
-          
+    # === 方案C：把计算入队，由独立 worker 执行；前端轮询 job_queue 状态显示 ===
+    nz <- function(x) if (is.null(x) || length(x) == 0) NA_character_ else x
+    meta <- list(
+      sel_experiment = sel_exp,
+      sel_ss_names   = paste0(find_original_names(sel_ss), collapse = ", "),
+      file_sig_name  = nz(input$file_sig$name),
+      file_IC50_name = nz(input$file_IC50$name),
+      file_FDA_name  = nz(input$file_FDA$name),
+      filter_mode    = filter_mode,
+      filter_value   = if (filter_mode == "logFC") input$sel_fc_sm else input$sel_topn_sm
+    )
+    enqueue_job(
+      jobid = jobid_bm, module = "Benchmark", sub_module = "ALL (ES and AUC)",
+      submitted_time = submitted_time,
+      params = list(IC50_drug = IC50_drug, FDA_drug = FDA_drug,
+                    i.need.logfc = i.need.logfc, sel_exp = sel_exp,
+                    sel_ss = sel_ss, filter_mode = filter_mode),
+      meta = meta
+    )
+    rv_bm_job(jobid_bm)
+    progress_bm$close()
 
-          
-          DT_res_bm1 <- datatable(res_bm1) %>% 
-            formatStyle(names(res_bm1)[which.max(res_bm1[1,-1]) + 1],
-                        backgroundColor = styleEqual(res_bm1[1, which.max(res_bm1[1,-1]) + 1], c('yellow')))
-          
-          
-          DT_res_bm2 <- datatable(res_bm2) %>% 
-              formatStyle(names(res_bm2)[which.min(res_bm2[1,-1])+1],
-                          backgroundColor = styleEqual(res_bm2[1, which.min(res_bm2[1,-1]) + 1], c('yellow')))
-            
-          
-          
-          output$display_bm <- renderUI({ ## renderUI 
-            tagList(
-              shiny::h3("Results of AUC",actionButton("intro_res_bm_AUC","Quick Tip",class = "btn-success")),
-              renderPlotly(pic_out1),
-              DT::renderDataTable(DT_res_bm1),
-              shiny::br(),
-              shiny::h3("Results of ES",actionButton("intro_res_bm_ES","Quick Tip",class = "btn-success")),
-              renderPlotly(pic_out2),
-              DT::renderDataTable(DT_res_bm2),
-              # 添加一个JS代码块来通知Shiny服务器端
-              tags$script(HTML("
-                $(document).on('shiny:visualchange', function(event) {
-                  if (event.target.id === 'display_bm') {
-                    Shiny.setInputValue('display_bm_loaded', true);
-                  }
-                });
-              "))
-            )
-          }) ## renderUI
-        } else if (length(res_bm) ==2){
-          
-          write_in_db(Jobid = jobid_bm, 
-                      Submitted_time = submitted_time, 
-                      module_name = "Benchmark",
-                      sub_module = res_bm[[2]],
-                      table_num = 1, 
-                      table_res = res_bm[[1]])
-          
-          res_title = res_bm[[2]]
-          res_bm = res_bm[[1]]
-
-          is_FC <- grepl("FC", res_title)
-          if(grepl("AUC", res_title)){
-            pic_out <- if (is_FC) ggplotly(draw_dr_auc_fc(res_bm)) else ggplotly(draw_dr_auc(res_bm))
-            DT_res_bm <- datatable(res_bm) %>% 
-              formatStyle(names(res_bm)[which.max(res_bm[1,-1]) + 1],
-                          backgroundColor = styleEqual(res_bm[1, which.max(res_bm[1,-1])+ 1], c('yellow')))
-          }
-          if(grepl("ES", res_title) && !grepl("AUC", res_title)){
-            pic_out <- if (is_FC) ggplotly(draw_dr_es_fc(res_bm)) else ggplotly(draw_dr_es(res_bm))
-            DT_res_bm <- datatable(res_bm) %>% 
-              formatStyle(names(res_bm)[which.min(res_bm[1,-1]) + 1],
-                          backgroundColor = styleEqual(res_bm[1, which.min(res_bm[1,-1])+ 1], c('yellow')))
-          }
-          
-          output$display_bm <- renderUI({ ## renderUI
-            tagList(
-              shiny::h3(paste0("Plot summary of"),
-                        res_title,actionButton(paste0("intro_res_bm_",res_title),"Quick Tip",class = "btn-success")),
-              renderPlotly(pic_out),
-              shiny::br(),
-              shiny::h3(paste0("Results of "),res_title),
-              DT::renderDataTable(DT_res_bm),
-              # 添加一个JS代码块来通知Shiny服务器端
-              tags$script(HTML("
-                $(document).on('shiny:visualchange', function(event) {
-                  if (event.target.id === 'display_bm') {
-                    Shiny.setInputValue('display_bm_loaded', true);
-                  }
-                });
-              "))
-            )
-          }) ## renderUI
-        } else{
-          output$display_bm <- renderUI({ ## renderUI
-            tagList(
-            shiny::h3("Please Check Iput Files!"),
-            tags$script(HTML("
-                $(document).on('shiny:visualchange', function(event) {
-                  if (event.target.id === 'display_bm') {
-                    Shiny.setInputValue('display_bm_loaded', true);
-                  }
-                });
-              "))
-            )
-          }) ## renderUI
-        }
-
-        progress_bm$close()
-      }
-    ) %...!% (function(e) {
-      progress_bm$close()
-      sendSweetAlert(
-        session = session,
-        title = "Error...",
-        text = paste("Computation failed:", conditionMessage(e)),
-        type = "error"
-      )
-    })
     output$display_bm <- renderUI({ ## renderUI 
       shiny::tagList(
         shiny::h3("Loading... Please wait."),
@@ -278,7 +159,7 @@ observeEvent(input$runBM, {
         },
         shiny::h3(if (filter_mode == "logFC") 
           "SSP will compute the |log2FC| threshold from 0.50 to maximum."
-          else "SSP will compute the topN from 10 to maximum."),
+          else "SSP will compute the topN from 10 to 1000 (or up to the number of genes if larger)."),
         shiny::h3(paste0("Your jobid is ",jobid_bm)),
         shiny::h3("Please remember it for retrieve results in Job Center."),
 

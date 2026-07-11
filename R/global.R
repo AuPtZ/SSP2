@@ -12,32 +12,61 @@ library(bsicons)      # Bootstrap icons
 library(dplyr) # data manipulation
 library(ggplot2) #data visualization
 library(DT) # for data tables
-library(leaflet) # javascript maps
 library(plotly) # interactive graphs
 library(shinyWidgets) # for extra widgets
 library(tibble) # rownames to column in techdoc
 library(shinyjs)
-library(shinydashboard) # for valuebox on techdoc tab
-library(sp)
-library(lubridate) #for automated list of dates in welcome modal
 library(shinycssloaders) #for loading icons, see line below
 # it uses github version devtools::install_github("andrewsali/shinycssloaders")
 # This is to avoid issues with loading symbols behind charts and perhaps with bouncing of app
 library(rmarkdown)
-library(thematic) # match plots to app theme
 library(pROC)
 library(dplyr)
 library(rio)
 library(tidyr)
 
-library(promises)
-library(future)
 library(magrittr)
 
-plan(multisession)
+# 方案C：重型计算已迁移到独立的 worker.R 进程（作业队列模式），
+# app / global 不再需要 future / promises / plan(multisession)，启动更快。
 
 # 加载可视化的数据，用于UI显示
 load("data_preload/others/drug_num_list1.rdata") # 读取数据内容
+
+# ---------------------------------------------------------------------------
+# 下载页两级联动（tissue -> dataset）所需数据结构
+# cell line 从文件名 LINCS_<cellline>_... 提取，再映射到 tissue。
+# 若需调整某个 cell line 的 tissue 归属，修改下面的 cellline_tissue 即可。
+# ---------------------------------------------------------------------------
+cellline_tissue <- c(
+  A375     = "Skin",
+  A549     = "Lung",
+  ASC      = "Other",
+  HA1E     = "Liver",
+  HCC515   = "Lung",
+  HELA     = "Cervix",
+  HEPG2    = "Liver",
+  HT29     = "Colon",
+  MCF10A   = "Breast",
+  MCF7     = "Breast",
+  NPC      = "Nasopharynx",
+  PC3      = "Prostate",
+  U2OS     = "Bone",
+  VCAP     = "Prostate",
+  `XC.L10` = "Breast",
+  YAPC     = "Pancreas"
+)
+dl_files   <- unname(drug_num_list1)
+dl_names   <- names(drug_num_list1)
+dl_cl      <- sub("^LINCS_([^_]+)_.*", "\\1", dl_files)
+dl_tissue  <- cellline_tissue[dl_cl]
+dl_tissue[is.na(dl_tissue)] <- "Other"
+
+drug_num_list_by_tissue <- list()
+for (t in sort(unique(dl_tissue))) {
+  idx <- which(dl_tissue == t)
+  drug_num_list_by_tissue[[t]] <- setNames(dl_files[idx], dl_names[idx])
+}
 load("data_preload/annotation/disinfo_vector.Rdata")
 load("data_preload/annotation/disinfo_vector2.Rdata")
 load("data_preload/others/landmark.rdata")

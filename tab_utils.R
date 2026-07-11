@@ -154,108 +154,91 @@ write_in_db <- function(Jobid, Submitted_time, module_name,
   dbDisconnect(con_res)
 }
 
-observeEvent(input$intro_res_bm_AUC, {
-  
-  showModal(modalDialog(
-    includeMarkdown("www/info_Q9_bm_AUC.md"),
-    title = "How to find optimal method and topN in Benchmark? (AUC)",
-    size = "l",
-    easyClose = T
-  ))
-  
-})
+# Quick Tip 弹窗。res_plot 已把 actionButton 的 id 按 prefix+jobid 唯一化
+# （bm_ / sm_ / jc_ 前缀），避免同会话两处渲染同一结果导致的
+# 「IDs were used for more than one input」警告。
+# 检测点击用「逐键记录已见点击数」：只有当某按钮的点击计数较上次
+# 增大时才弹窗；结果重渲染（按钮 id 变化、新按钮初始为 0）不会误触发。
+if (!exists("tip_seen", mode = "environment") || is.null(tip_seen)) {
+  tip_seen <- new.env(hash = TRUE, parent = emptyenv())
+}
 
-observeEvent(input$intro_res_bm_ES, {
-  
-  showModal(modalDialog(
-    includeMarkdown("www/info_Q9_bm_ES.md"),
-    title = "How to find optimal method and topN in Benchmark? (ES)",
-    size = "l",
-    easyClose = T
-  ))
-  
-})
+.observe_tip <- function(pattern, md_file, title) {
+  observe({
+    ks <- grep(pattern, names(input), value = TRUE)
+    for (k in ks) {
+      v <- input[[k]]
+      seen <- if (exists(k, envir = tip_seen, inherits = FALSE)) tip_seen[[k]] else 0
+      if (!is.null(v) && v > seen) {
+        tip_seen[[k]] <- v
+        showModal(modalDialog(
+          includeMarkdown(md_file),
+          title = title, size = "l", easyClose = TRUE
+        ))
+      }
+    }
+  })
+}
+
+.observe_tip("intro_res_bm_AUC_",   "www/info_Q9_bm_AUC.md",
+            "How to find optimal method and topN in Benchmark? (AUC)")
+.observe_tip("intro_res_bm_ES_",    "www/info_Q9_bm_ES.md",
+            "How to find optimal method and topN in Benchmark? (ES)")
+.observe_tip("intro_res_sm_sm_",    "www/info_Q9_sm_sm.md",    "Quick Tip")
+.observe_tip("intro_res_sm_cross_", "www/info_Q9_sm_cross.md", "Quick Tip")
+.observe_tip("intro_res_sm_all_",  "www/info_Q9_sm_all.md",  "Quick Tip")
 
 observeEvent(input$intro_res_rb, {
-  
   showModal(modalDialog(
     includeMarkdown("www/info_Q9_rb.md"),
-    title = "Quick Tip",
-    size = "l",
-    easyClose = T
-  ))
-  
-})
-
-
-observeEvent(input$intro_res_sm_sm, {
-
-  showModal(modalDialog(
-    includeMarkdown("www/info_Q9_sm_sm.md"),
-    title = "Quick Tip",
-    size = "l",
-    easyClose = T
-  ))
-})
-
-observeEvent(input$intro_res_sm_cross, {
-  
-  showModal(modalDialog(
-    includeMarkdown("www/info_Q9_sm_cross.md"),
-    title = "Quick Tip",
-    size = "l",
-    easyClose = T
-  ))
-})
-
-observeEvent(input$intro_res_sm_all, {
-  
-  showModal(modalDialog(
-    includeMarkdown("www/info_Q9_sm_all.md"),
-    title = "Quick Tip",
-    size = "l",
-    easyClose = T
+    title = "Quick Tip", size = "l", easyClose = T
   ))
 })
 
 # FOR EACH PAGE
 observeEvent(input$runBENdemo,{
   load("demo/BEN1712624574ZFX.rdata")
-  output$display_bm <- renderUI({res_plot(job_info)})
+  output$display_bm <- renderUI({res_plot(job_info, prefix = "bm")})
 })
 observeEvent(input$runAPPdemo1,{
   load("demo/APP1709824554ILK.rdata")
-  output$display_sm <- renderUI({res_plot(job_info)})
+  output$display_sm <- renderUI({res_plot(job_info, prefix = "sm")})
 })
 observeEvent(input$runAPPdemo2,{
   load("demo/APP1709818711RFU.rdata")
-  output$display_sm <- renderUI({res_plot(job_info)})
+  output$display_sm <- renderUI({res_plot(job_info, prefix = "sm")})
 })
 observeEvent(input$runAPPdemo3,{
   load("demo/APP1709818670ZIA.rdata")
-  output$display_sm <- renderUI({res_plot(job_info)})
+  output$display_sm <- renderUI({res_plot(job_info, prefix = "sm")})
 })
 # FOR JOB PAGE
 observeEvent(input$runjcBENdemo,{
   load("demo/BEN1712624574ZFX.rdata")
-  output$display_jc <- renderUI({res_plot(job_info)})
+  output$display_jc <- renderUI({res_plot(job_info, prefix = "jc")})
 })
 observeEvent(input$runjcAPPdemo1,{
   load("demo/APP1709824554ILK.rdata")
-  output$display_jc <- renderUI({res_plot(job_info)})
+  output$display_jc <- renderUI({res_plot(job_info, prefix = "jc")})
 })
 observeEvent(input$runjcAPPdemo2,{
   load("demo/APP1709818711RFU.rdata")
-  output$display_jc <- renderUI({res_plot(job_info)})
+  output$display_jc <- renderUI({res_plot(job_info, prefix = "jc")})
 })
 observeEvent(input$runjcAPPdemo3,{
   load("demo/APP1709818670ZIA.rdata")
-  output$display_jc <- renderUI({res_plot(job_info)})
+  output$display_jc <- renderUI({res_plot(job_info, prefix = "jc")})
 })
 
 
 
-res_plot <- function(job_info){
+res_plot <- function(job_info, prefix = "res"){
+  # 每个调用上下文（Benchmark / Job Center / Application）传不同 prefix，
+  # 使 actionButton 的 id 在会话内唯一，避免 "IDs were used for more than one input"。
+  jid <- job_info$yourjob$V1[job_info$yourjob$V2 == "Job id"]
+  jid <- if (length(jid) && nzchar(jid[1])) jid[1] else "x"
+  tid <- function(base) paste0(prefix, "_", base, "_", jid)
+
   isFC <- !is.null(job_info$yourjob$filter_mode) && job_info$yourjob$filter_mode == "logFC"
 
   if(job_info$yourmodule == "ALL (ES and AUC)" || 
@@ -283,11 +266,11 @@ res_plot <- function(job_info){
       shiny::h3("Job info"),
       renderTable(job_info$yourjob, striped = T, hover = T, spacing = "l",
                   bordered = T, rownames = F, colnames = F ),
-      shiny::h3("Results of AUC",actionButton("intro_res_bm_AUC","Quick Tip",class = "btn-success")),
+      shiny::h3("Results of AUC",actionButton(tid("intro_res_bm_AUC"),"Quick Tip",class = "btn-success")),
       renderPlotly(pic_out1),
       DT::renderDataTable(DT_res_bm1),
       shiny::br(),
-      shiny::h3("Results of ES",actionButton("intro_res_bm_ES","Quick Tip",class = "btn-success")),
+      shiny::h3("Results of ES",actionButton(tid("intro_res_bm_ES"),"Quick Tip",class = "btn-success")),
       renderPlotly(pic_out2),
       DT::renderDataTable(DT_res_bm2),
     )
@@ -310,7 +293,7 @@ res_plot <- function(job_info){
       renderTable(job_info$yourjob, striped = T, hover = T, spacing = "l",
                   bordered = T, rownames = F, colnames = F ),
       shiny::h3(paste0("Plot summary of ",res_title),
-                actionButton(paste0("intro_res_bm_",tip_id),"Quick Tip",class = "btn-success")),
+                actionButton(tid(paste0("intro_res_bm_",tip_id)),"Quick Tip",class = "btn-success")),
       renderPlotly(pic_out),
       shiny::br(),
       shiny::h3(paste0("Results of "),res_title),
@@ -333,7 +316,7 @@ res_plot <- function(job_info){
       renderTable(job_info$yourjob, striped = T, hover = T, spacing = "l",
                   bordered = T, rownames = F, colnames = F ),
       shiny::h3(paste0("Plot summary of ",res_title),
-                actionButton(paste0("intro_res_bm_",tip_id),"Quick Tip",class = "btn-success")),
+                actionButton(tid(paste0("intro_res_bm_",tip_id)),"Quick Tip",class = "btn-success")),
       renderPlotly(pic_out),
       shiny::br(),
       shiny::h3(paste0("Results of "),res_title),
@@ -346,7 +329,7 @@ res_plot <- function(job_info){
       shiny::h3("Job info"),
       renderTable(job_info$yourjob, striped = T, hover = T, spacing = "l",
                   bordered = T, rownames = F, colnames = F ),
-      shiny::h3("Plot summary",actionButton("intro_res_sm_sm","Quick Tip",class = "btn-success")),
+      shiny::h3("Plot summary",actionButton(tid("intro_res_sm_sm"),"Quick Tip",class = "btn-success")),
       renderPlotly(ggplotly(draw_single(job_info$yourtable))),
       shiny::h3("Results"),
       DT::renderDataTable(job_info$yourtable %>%
@@ -359,7 +342,7 @@ res_plot <- function(job_info){
       shiny::h3("Job info"),
       renderTable(job_info$yourjob, striped = T, hover = T, spacing = "l",
                   bordered = T, rownames = F, colnames = F ),
-      shiny::h3("Plot summary",actionButton("intro_res_sm_cross","Quick Tip",class = "btn-success")),
+      shiny::h3("Plot summary",actionButton(tid("intro_res_sm_cross"),"Quick Tip",class = "btn-success")),
       renderPlotly(ggplotly(draw_cross(job_info$yourtable, 
                                        bioname1=job_info$signame1,bioname2=job_info$signame2))),
       shiny::br(),
@@ -373,7 +356,7 @@ res_plot <- function(job_info){
       shiny::h3("Job info"),
       renderTable(job_info$yourjob, striped = T, hover = T, spacing = "l",
                   bordered = T, rownames = F, colnames = F ),
-      shiny::h3("Plot summary",actionButton("intro_res_sm_all","Quick Tip",class = "btn-success")),
+      shiny::h3("Plot summary",actionButton(tid("intro_res_sm_all"),"Quick Tip",class = "btn-success")),
       renderPlotly(ggplotly(draw_all(job_info$yourtable))),
       shiny::br(),
       shiny::h3("Results"),

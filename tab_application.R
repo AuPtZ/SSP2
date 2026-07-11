@@ -7,8 +7,7 @@
 
 library(ggplot2)
 library(ggrepel)
-library(future)
-library(promises)
+# 方案C：计算已迁移到独立 worker.R，模块内不再使用 future/promises
 library(memoise)
 
 
@@ -17,9 +16,31 @@ library(memoise)
 # 初始化
 output$display_sm <- renderUI({initial_sm})
 
+# === 方案C：作业轮询显示 ===
+rv_sm_job <- reactiveVal(NULL)   # 当前正在等待结果的 jobid
+observe({
+  jid <- rv_sm_job()
+  req(jid)
+  st <- get_job_status(jid)
+  status <- if (nrow(st) == 0) "pending" else st$status[1]
+  if (status %in% c("pending", "running")) {
+    invalidateLater(3000)
+  } else if (status == "error") {
+    rv_sm_job(NULL)
+    emsg <- if (nrow(st)) st$error_msg[1] else "unknown error"
+    sendSweetAlert(session, title = "Error...",
+                   text = paste("Computation failed:", emsg), type = "error")
+    output$display_sm <- renderUI({initial_sm})
+  } else {                        # done
+    rv_sm_job(NULL)
+    job_info <- read_from_db(jid)
+    output$display_sm <- renderUI({ res_plot(job_info, prefix = "sm") })
+  }
+})
+
 # 重置
 observeEvent(input$reset_sm, {
-  
+  rv_sm_job(NULL)
   # runjs("history.go(0)")
   reset("sm_input")
   output$display_sm <- renderUI({initial_sm})
@@ -109,100 +130,38 @@ observeEvent(input$runSM, {
     ###
     progress_sm$inc(0.2, detail = paste("file loaded, computing"))
     ###
-    
-    # 运行层
-    future_promise({    ## 这里可能需要单独加载包哦
-      
-      library(dplyr) # 为了future正常运行使用的
-      library(tidyr)
-      library(tidyverse)
-      
-      
-      
-      isolate({
-        
-        res_sm_f <-  get_single_method(drug_profile = drug_profile,
-                                       topn = topn,
-                                       filter_mode = filter_mode,
-                                       fc_threshold = fc_threshold,
-                                       sel_model_sm1= sel_model_sm1,
-                                       i.need.logfc = i.need.logfc,
-                                       funcname = funcname,
-                                       funcname_mul = funcname_mul,
-                                       direct = direct,
-                                       bioname1 = bioname1,
-                                       bioname2 = bioname2)
-        return(res_sm_f)
-        
-      })
-    }, seed = TRUE) %...>% (
-      function(result){
-        
 
-        
-        res_sm <- result[[1]]
-        p_sm <- result[[2]] # 在参数中已经提前处理过了，直接输出即可
-        write_in_db(Jobid = jobid_sm, 
-                    Submitted_time = submitted_time, 
-                    module_name = "Application",
-                    sub_module = input$sel_model_sm,
-                    table_num = 1, 
-                    table_res = res_sm)
-        
-        
-        ###
-        progress_sm$inc(0.6, detail = "ploting")
-        ###
-        
-        # output$display_sm <- renderUI({ # renderUI 
-        #   tagList(
-        #     shiny::h3("Plot summary"),
-        #     renderPlotly(p_sm),
-        #     shiny::br(),
-        #     shiny::h3("Results"),
-        #     DT::renderDataTable(res_sm,server = FALSE,
-        #                         options = list(scrollX = TRUE,
-        #                                        fixedColumns = TRUE)),
-        #   )
-        # }) # renderUI
-        
-        
-        output$display_sm <- renderUI({ # renderUI 
-          tagList(
-            shiny::h3("Plot summary",actionButton(paste0("intro_res_sm_",sel_model_sm1),"Quick Tip",class = "btn-success")),
-            renderPlotly(p_sm),
-            shiny::br(),
-            shiny::h3("Results"),
-            DT::renderDataTable(res_sm %>%
-                                  dplyr::rename(any_of(rename_col_rules)),
-                                server = FALSE,
-                                options = list(scrollX = TRUE,
-                                               fixedColumns = TRUE)),
-            # 添加一个JS代码块来通知Shiny服务器端
-            tags$script(HTML("
-                $(document).on('shiny:visualchange', function(event) {
-                  if (event.target.id === 'display_sm') {
-                    Shiny.setInputValue('display_sm_loaded', true);
-                  }
-                });
-              "))
-          )
-        }) # renderUI
-        
-        
-        # print("job finished!")
-        progress_sm$close()
-      }
-    ) %...!% (function(error){
-      progress_sm$close()
-      sendSweetAlert(
-        session = session,
-        title = "Error...",
-        text = paste("Computation failed:", conditionMessage(error)),
-        type = "error"
-      )
-    })
-    
+    # === 方案C：把计算入队，由独立 worker 执行；前端轮询 job_queue 状态显示 ===
+    nz <- function(x) if (is.null(x) || length(x) == 0) NA_character_ else x
+    meta <- list(
+      sel_experiment_sm = drug_profile,
+      sel_model_sm      = sub_module,
+      method_sm2        = find_original_names(funcname),
+      method_sm1_all    = paste0(find_original_names(funcname_mul), collapse = ", "),
+      direction_sm      = direct,
+      file_sig_sm_name  = nz(input$file_sig_sm$name),
+      file_sig_sm1_name = nz(input$file_sig_sm1$name),
+      file_sig_sm2_name = nz(input$file_sig_sm2$name),
+      file_name1        = nz(input$file_name1),
+      file_name2        = nz(input$file_name2),
+      sel_topn_sm       = input$sel_topn_sm,
+      filter_mode       = filter_mode,
+      filter_value      = if (filter_mode == "logFC") input$sel_fc_sm else input$sel_topn_sm
+    )
+    enqueue_job(
+      jobid = jobid_sm, module = "Application", sub_module = sub_module,
+      submitted_time = submitted_time,
+      params = list(drug_profile = drug_profile, topn = topn,
+                    filter_mode = filter_mode, fc_threshold = fc_threshold,
+                    sel_model_sm1 = sel_model_sm1, i.need.logfc = i.need.logfc,
+                    funcname = funcname, funcname_mul = funcname_mul,
+                    direct = direct, bioname1 = bioname1, bioname2 = bioname2),
+      meta = meta
+    )
+    rv_sm_job(jobid_sm)
+    progress_sm$close()
+
+
     output$display_sm <- renderUI({ 
       shiny::tagList(
         shiny::h3("Loading... Please wait."),

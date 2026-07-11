@@ -53,6 +53,23 @@ observeEvent(input$jobid_get, {
       # save(job_info,file = paste0("demo/",input$jobid_input,".rdata"))
       # print(paste0("job_info is",job_info))
 
+      # 方案C：作业尚未完成 / 失败时的明确提示
+      if(!is.null(job_info$state)){
+        is_err <- job_info$state == "error"
+        msg <- switch(job_info$state,
+          pending = "Your job is queued and waiting to start. Please check back later.",
+          running = "Your job is running in background. Please check back later.",
+          error   = paste("Your job failed:", job_info$error),
+          "Unknown job status.")
+        shinyWidgets::sendSweetAlert(
+          session = session,
+          title = if (is_err) "Error..." else "Please wait",
+          text = msg,
+          type = if (is_err) "error" else "info"
+        )
+      }
+      req(is.null(job_info$state))
+
       if(length(job_info) <= 1){
         shinyWidgets::sendSweetAlert(
           session = session,
@@ -67,7 +84,7 @@ observeEvent(input$jobid_get, {
       req(job_info$yourtable)
       req(job_info$yourmodule)
       
-      res_plot(job_info)
+      res_plot(job_info, prefix = "jc")
       # save(job_info,file = "demo/BEN1712624574ZFX.rdata")
       
     }) # isolate end
@@ -84,7 +101,18 @@ read_from_db <- function(Jobid_query){
   # library(stringr)
   # con_red_res <- dbConnect(RSQLite::SQLite(), "App-1//results/resinfo.db")
   con_red_res <- dbConnect(RSQLite::SQLite(), "results/resinfo.db")
-  
+
+  # 方案C：先查作业队列状态，未完成/失败时直接返回状态给上层提示
+  if (dbExistsTable(con_red_res, "job_queue")) {
+    qs <- dbGetQuery(con_red_res,
+      "SELECT status, error_msg FROM job_queue WHERE jobid = ?",
+      params = list(Jobid_query))
+    if (nrow(qs) == 1 && qs$status != "done") {
+      dbDisconnect(con_red_res)
+      return(list(state = qs$status, error = qs$error_msg))
+    }
+  }
+
   # AAAa =  tbl(con_red_res,"res") %>% as_tibble()
   retrieve_job <- tbl(con_red_res,"res") %>% 
     dplyr::filter(Jobid == Jobid_query) %>%  
@@ -114,8 +142,16 @@ read_from_db <- function(Jobid_query){
       
     }
     
-    retrieve_job <- retrieve_job %>% t() %>%   cbind(t(name_for_res_col)) %>% 
-      na.omit() %>% as.data.frame %>% dplyr::select(c("V2","V1"))
+    # 按列名对齐：build_df1（方案 C）只写相关列（如 Benchmark 12 列），
+    # 而 name_for_res_col 定义了全部 21 个标签。取两者交集并按
+    # name_for_res_col 的顺序对齐，避免 t() 后行数不一致导致 cbind 报错
+    # （旧 write_in_db 写满 21 列故一直对齐，方案 C 改为按需写列）。
+    keep <- intersect(names(name_for_res_col), names(retrieve_job))
+    retrieve_job <- data.frame(
+      V2 = unname(unlist(name_for_res_col[keep])),
+      V1 = unname(unlist(retrieve_job[keep])),
+      stringsAsFactors = FALSE
+    ) %>% dplyr::filter(!is.na(V1))
     
     dbDisconnect(con_red_res)
     

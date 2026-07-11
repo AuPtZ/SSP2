@@ -4,11 +4,10 @@ library(bslib)
 library(bsicons)
 library(shinyWidgets)
 library(shinycssloaders)
-library(future)
-library(promises)
 library(htmltools)
 
-plan(multisession, workers = get_cores())
+# 方案C：重型计算由独立 worker.R 进程处理，Shiny 端不再需要 future/plan(multisession)，
+# 因此启动不再花费在预热后台 worker 上。
 
 shinyOptions(cache = cachem::cache_mem(max_size = 1000e6))
 options(shiny.sanitize.errors = TRUE)
@@ -25,6 +24,7 @@ ui <- page_navbar(
   theme = bs_theme(
     version = 5,
     preset = "journal" ,
+    # heading_font = font_google("News Cycle"),
     base_font = font_google("Roboto Condensed")
   ),
   navbar_options = navbar_options(
@@ -236,11 +236,11 @@ ui <- page_navbar(
                 )
               )
             ),
-            selectInput(
+            pickerInput(
               "sel_experiment",
               label = NULL,
               choices = drug_num_list1,
-              selected = "LINCS_HEPG2_10uM_6h.rdata"
+              selected = "LINCS_U2OS_10uM_6h.rdata"
             ),
             downloadButton(
               "dl_drug_ann_bm",
@@ -407,7 +407,7 @@ ui <- page_navbar(
                 )
               )
             ),
-            selectInput(
+            pickerInput(
               inputId = "sel_model_sm",
               label = NULL,
               choices = list(
@@ -473,7 +473,7 @@ ui <- page_navbar(
                 )
               )
             ),
-            selectInput(
+            pickerInput(
               "sel_experiment_sm",
               label = NULL,
               choices = drug_num_list1,
@@ -546,7 +546,7 @@ ui <- page_navbar(
                 label = NULL,
                 value = 150,
                 min = 10,
-                max = 489
+                max = 1000
               )
             ),
             conditionalPanel(
@@ -606,7 +606,7 @@ ui <- page_navbar(
         textInput(
           "jobid_input",
           label = "Input Jobid",
-          value = "BEN1712624574ZFX"
+          value = "BEN1783750343BUH"
         ),
         div(
           class = "d-grid gap-2 mt-0",
@@ -675,7 +675,7 @@ ui <- page_navbar(
             "Here are two types of annotation files for different methods.",
             br()
           ),
-          selectInput(
+          pickerInput(
             "an_auc_input",
             "Please select cancer",
             choices = disinfo_vector,
@@ -712,7 +712,7 @@ ui <- page_navbar(
             "Here are two types of annotation files for different methods.",
             br()
           ),
-          selectInput(
+          pickerInput(
             "an_es_input",
             "Please select cancer",
             choices = disinfo_vector2,
@@ -891,11 +891,17 @@ ui <- page_navbar(
           br(),
           br(),
           h3("Download curated pharmacotranscriptomic datasets"),
-          selectInput(
+          pickerInput(
+            "sel_tissue_dl",
+            label = "Select tissue",
+            choices = names(drug_num_list_by_tissue),
+            selected = names(drug_num_list_by_tissue)[1]
+          ),
+          pickerInput(
             "sel_experiment_dl",
             label = "Select a specific dataset",
-            choices = drug_num_list1,
-            selected = "LINCS_HEPG2_10uM_6h.rdata"
+            choices = drug_num_list_by_tissue[[names(drug_num_list_by_tissue)[1]]],
+            selected = unname(drug_num_list_by_tissue[[names(drug_num_list_by_tissue)[1]]][1])
           ),
           downloadButton(
             "dl_drug_exp",
@@ -946,6 +952,17 @@ server <- function(input, output, session) {
   session$onFlushed(once = TRUE, function() {
     closeSweetAlert()
     serverLoaded <<- TRUE
+  })
+
+  # 下载页两级联动：切换 tissue 时，更新 dataset 下拉的可选项与默认值
+  observeEvent(input$sel_tissue_dl, {
+    new_choices <- drug_num_list_by_tissue[[input$sel_tissue_dl]]
+    updatePickerInput(
+      session,
+      "sel_experiment_dl",
+      choices = new_choices,
+      selected = unname(new_choices[1])
+    )
   })
 
   ###############################################.
