@@ -4,10 +4,12 @@
 .Ruserdata
 .gitattributes
 .html
+.codebuddy
 NULLprocessing/
 cache/BM/
 cache/SM/
 cache/SS/
+log/
 data_preload/robustness/
 data_preload/robustness_old/
 data_preload/others/
@@ -22,3 +24,4 @@ app_cache/
 app.R.with_robustness_backup
 results/resinfo.db
 cache/queue/*.rds
+demo/*.rdata

@@ -18,7 +18,7 @@ options(shiny.sanitize.errors = TRUE)
 # --------------------------------------------------------------------------
 ui <- page_navbar(
   id = "intabset",
-  title = bs_icon("stars"),
+  title = tagList(bs_icon("stars"), "SSP2"),
   window_title = "SSP2",
   lang = "en",
   theme = bs_theme(
@@ -53,7 +53,15 @@ ui <- page_navbar(
           s.parentNode.insertBefore(hm, s);
         })();
       "
-      ))
+      )),
+      tags$style(HTML("
+        /* bootstrap-select 搜索框在 Bootstrap 5 下的可见性修复 */
+        .bootstrap-select .bs-searchbox { padding: 4px 8px; }
+        .bootstrap-select .bs-searchbox input.form-control {
+          width: 100%;
+          box-sizing: border-box;
+        }
+      "))
     )
   ),
   ###############################################.
@@ -80,7 +88,7 @@ ui <- page_navbar(
             ),
             h5(
               "SSP2 integrates",
-              strong(" 9 tumor cell lines"),
+              strong(" 155 tumor cell lines"),
               ", multiple perturbation concentrations and treatment times, and",
               strong(" 12,328 genes"),
               " from the LINCS2020 beta dataset. It offers rigorously benchmarked Signature Search Methods (SSMs)",
@@ -90,10 +98,39 @@ ui <- page_navbar(
             #   class = "d-flex flex-wrap gap-2 mt-2",
             #   span(class = "badge bg-primary", "LINCS2020"),
             #   span(class = "badge bg-secondary", "12,328 genes"),
-            #   span(class = "badge bg-info text-dark", "9 cell lines"),
+            #   span(class = "badge bg-info text-dark", "155 cell lines"),
             #   span(class = "badge bg-success", "Real-time p-values"),
             #   span(class = "badge bg-warning text-dark", "topN / |log2FC|")
             # )
+            # 数据库规模统计卡片（置于 Get started 上方）
+            layout_column_wrap(
+              width = 1 / 4,
+              fill = FALSE,
+              value_box(
+                title = "Tissues",
+                value = n_tissue # ,
+                # showcase = bs_icon("heart-pulse"),
+                # theme = "info"
+              ),
+              value_box(
+                title = "Cell lines",
+                value = n_cellline # ,
+                # showcase = bs_icon("bug"),
+                # theme = "secondary"
+              ),
+              value_box(
+                title = "Signature Search Methods",
+                value = n_method # ,
+                # showcase = bs_icon("search"),
+                # theme = "primary"
+              ),
+              value_box(
+                title = "Genes",
+                value = format(n_gene, big.mark = ",") # ,
+                # showcase = bs_icon("virus"),
+                # theme = "primary"
+              )
+            ),
             # Module cards
             h3("Get started", class = "mt-0 mb-0"),
             layout_column_wrap(
@@ -157,36 +194,6 @@ ui <- page_navbar(
                 )
               )
             ),
-            # How it works
-            h3("How it works", class = "mt-0 mb-0"),
-            layout_column_wrap(
-              width = 1 / 4,
-              fill = FALSE,
-              card(
-                card_header(bs_icon("upload"), "1. Provide a signature"),
-                card_body(p(
-                  "Upload an oncogenic gene signature (gene symbol + log2FC) from cell lines or patient cohorts."
-                ))
-              ),
-              card(
-                card_header(bs_icon("search"), "2. Choose a method"),
-                card_body(p(
-                  "Select one or more Signature Search Methods, or integrate them via SS_all / SS_cross."
-                ))
-              ),
-              card(
-                card_header(bs_icon("capsule"), "3. Query drugs"),
-                card_body(p(
-                  "Rank candidate drugs by enrichment, with real-time null distributions for p-values."
-                ))
-              ),
-              card(
-                card_header(bs_icon("bar-chart"), "4. Evaluate"),
-                card_body(p(
-                  "Benchmark module helps you pick the best method for your context."
-                ))
-              )
-            )
           )
         ),
 
@@ -227,7 +234,7 @@ ui <- page_navbar(
               step_pop(
                 " Step 1. Select a pharmacotranscriptomic dataset",
                 paste(
-                  "SSP contains datasets of nine tumor cell lines at ",
+                  "SSP contains datasets of 155 tumor cell lines at ",
                   as.character(strong(
                     "different concentration and treat time."
                   )),
@@ -237,10 +244,18 @@ ui <- page_navbar(
               )
             ),
             pickerInput(
+              "sel_tissue",
+              label = "Select tissue",
+              choices = names(drug_num_list_by_tissue),
+              selected = "Bone",
+              options = list()
+            ),
+            pickerInput(
               "sel_experiment",
-              label = NULL,
-              choices = drug_num_list1,
-              selected = "LINCS_U2OS_10uM_6h.rdata"
+              label = "Select a specific dataset",
+              choices = drug_num_list_by_tissue[["Bone"]],
+              selected = "LINCS_U2OS_10uM_6h.rdata",
+              options = list()
             ),
             downloadButton(
               "dl_drug_ann_bm",
@@ -264,11 +279,11 @@ ui <- page_navbar(
                 )
               )
             ),
-            awesomeCheckboxGroup(
+            checkboxGroupInput(
               "sel_ss",
               label = NULL,
               choices = ss_list,
-              selected = list("SS_Xsum", "SS_CMap")
+              selected = c("SS_Xsum", "SS_CMap")
             )
           ),
           div(
@@ -415,7 +430,8 @@ ui <- page_navbar(
                 "SS cross" = "SS_cross",
                 "SS all" = "SS_all"
               ),
-              selected = "singlemethod"
+              selected = "singlemethod",
+              options = list()
             )
           ),
           div(
@@ -434,27 +450,27 @@ ui <- page_navbar(
               ),
               conditionalPanel(
                 condition = "input.sel_model_sm == 'singlemethod' | input.sel_model_sm == 'SS_cross'",
-                awesomeRadio(
+                radioButtons(
                   "sel_ss_sm",
                   label = NULL,
                   choices = ss_list,
-                  selected = list("SS_GSEA")
+                  selected = "SS_GSEA"
                 )
               ),
               conditionalPanel(
                 condition = "input.sel_model_sm == 'SS_all'",
-                awesomeCheckboxGroup(
+                checkboxGroupInput(
                   "sel_all_sm",
                   label = NULL,
                   choices = ss_list,
-                  selected = list("SS_Xsum", "SS_CMap")
+                  selected = c("SS_Xsum", "SS_CMap")
                 ),
-                awesomeRadio(
+                radioButtons(
                   "sel_direct_sm",
                   label = NULL,
                   choices = sm_direct,
                   inline = TRUE,
-                  selected = list("Down")
+                  selected = "Down"
                 )
               )
             ),
@@ -465,7 +481,7 @@ ui <- page_navbar(
               step_pop(
                 " Step 3. Select a pharmacotranscriptomic dataset",
                 paste(
-                  "SSP contains datasets of nine tumor cell lines at ",
+                  "SSP contains datasets of 155 tumor cell lines at ",
                   as.character(strong(
                     "different concentration and treat time."
                   )),
@@ -474,10 +490,18 @@ ui <- page_navbar(
               )
             ),
             pickerInput(
+              "sel_tissue_sm",
+              label = "Select tissue",
+              choices = names(drug_num_list_by_tissue),
+              selected = "Breast",
+              options = list()
+            ),
+            pickerInput(
               "sel_experiment_sm",
-              label = NULL,
-              choices = drug_num_list1,
-              selected = "LINCS_MCF7_10uM_6h.rdata"
+              label = "Select a specific dataset",
+              choices = drug_num_list_by_tissue[["Breast"]],
+              selected = "LINCS_MCF7_10uM_6h.rdata",
+              options = list()
             )
           ),
           div(
@@ -679,7 +703,8 @@ ui <- page_navbar(
             "an_auc_input",
             "Please select cancer",
             choices = disinfo_vector,
-            selected = "PRAD"
+            selected = "PRAD",
+            options = list()
           ),
           shiny::br(),
           downloadButton(
@@ -716,7 +741,8 @@ ui <- page_navbar(
             "an_es_input",
             "Please select cancer",
             choices = disinfo_vector2,
-            selected = "BRCA"
+            selected = "BRCA",
+            options = list()
           ),
           shiny::br(),
           downloadButton(
@@ -895,13 +921,15 @@ ui <- page_navbar(
             "sel_tissue_dl",
             label = "Select tissue",
             choices = names(drug_num_list_by_tissue),
-            selected = names(drug_num_list_by_tissue)[1]
+            selected = names(drug_num_list_by_tissue)[1],
+            options = list()
           ),
           pickerInput(
             "sel_experiment_dl",
             label = "Select a specific dataset",
             choices = drug_num_list_by_tissue[[names(drug_num_list_by_tissue)[1]]],
-            selected = unname(drug_num_list_by_tissue[[names(drug_num_list_by_tissue)[1]]][1])
+            selected = unname(drug_num_list_by_tissue[[names(drug_num_list_by_tissue)[1]]][1]),
+            options = list()
           ),
           downloadButton(
             "dl_drug_exp",
@@ -960,6 +988,28 @@ server <- function(input, output, session) {
     updatePickerInput(
       session,
       "sel_experiment_dl",
+      choices = new_choices,
+      selected = unname(new_choices[1])
+    )
+  })
+
+  # Benchmark 页两级联动
+  observeEvent(input$sel_tissue, {
+    new_choices <- drug_num_list_by_tissue[[input$sel_tissue]]
+    updatePickerInput(
+      session,
+      "sel_experiment",
+      choices = new_choices,
+      selected = unname(new_choices[1])
+    )
+  })
+
+  # Application 页两级联动
+  observeEvent(input$sel_tissue_sm, {
+    new_choices <- drug_num_list_by_tissue[[input$sel_tissue_sm]]
+    updatePickerInput(
+      session,
+      "sel_experiment_sm",
       choices = new_choices,
       selected = unname(new_choices[1])
     )

@@ -22,8 +22,8 @@ if (length(profile_list) == 0) {
 
 get_drug_num <- function(profile_file) {
   load(file.path("data_preload/drugexp/", profile_file))
-  drug_num <- ncol(exp_GSE92742)
-  rm(exp_GSE92742, sig_GSE92742)
+  drug_num <- ncol(exp_LINCS2020)
+  rm(exp_LINCS2020, sig_LINCS2020)
   
   # 生成显示名称
   disp_name <- gsub("\\.rdata$", "", profile_file)

@@ -87,8 +87,8 @@ comb <- trt[, .(
 
 cat(sprintf("原始组合数: %d\n", nrow(comb)))
 
-# ---- 筛选：药物数 >= 1000 ----
-comb_f <- comb[n_drugs >= 1000][order(-n_drugs)]
+# ---- 筛选：药物数 > 100（纳入更多数据集，原阈值为 1000）----
+comb_f <- comb[n_drugs > 100][order(-n_drugs)]
 cat(sprintf("药物数 >= 1000 的组合数: %d\n", nrow(comb_f)))
 
 # 生成文件名（兼容旧格式）

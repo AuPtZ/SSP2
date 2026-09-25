@@ -34,28 +34,47 @@ library(magrittr)
 load("data_preload/others/drug_num_list1.rdata") # 读取数据内容
 
 # ---------------------------------------------------------------------------
-# 下载页两级联动（tissue -> dataset）所需数据结构
-# cell line 从文件名 LINCS_<cellline>_... 提取，再映射到 tissue。
-# 若需调整某个 cell line 的 tissue 归属，修改下面的 cellline_tissue 即可。
+# 各页面两级联动（tissue -> dataset）所需数据结构
+# tissue 由 cellinfo_beta.txt 的 cell_iname -> cell_lineage（组织来源）推导；
+# cell_lineage 缺失时回退到 subtype，再缺失归为 "Other"。
+# 若需覆盖某个 cell line 的 tissue 归属，在下方 cellline_tissue_override 中指定即可。
 # ---------------------------------------------------------------------------
-cellline_tissue <- c(
-  A375     = "Skin",
-  A549     = "Lung",
-  ASC      = "Other",
-  HA1E     = "Liver",
-  HCC515   = "Lung",
-  HELA     = "Cervix",
-  HEPG2    = "Liver",
-  HT29     = "Colon",
-  MCF10A   = "Breast",
-  MCF7     = "Breast",
-  NPC      = "Nasopharynx",
-  PC3      = "Prostate",
-  U2OS     = "Bone",
-  VCAP     = "Prostate",
-  `XC.L10` = "Breast",
-  YAPC     = "Pancreas"
-)
+cellinfo_path <- "/home/data/dataportal/LINCS2020/cellinfo_beta.txt"
+if (file.exists(cellinfo_path)) {
+  ci_raw <- data.table::fread(
+    cellinfo_path, sep = "\t", header = TRUE,
+    select = c("cell_iname", "cell_lineage", "subtype")
+  )
+  ci <- data.frame(
+    cell_iname = ci_raw$cell_iname,
+    lineage    = ci_raw$cell_lineage,
+    subtype    = ci_raw$subtype,
+    stringsAsFactors = FALSE
+  )
+  ci <- ci[!duplicated(ci$cell_iname), ]
+
+  tissue_raw <- ci$lineage
+  na_idx <- is.na(tissue_raw) | tissue_raw %in% c("", "unknown", "Unknown")
+  tissue_raw[na_idx] <- ci$subtype[na_idx]
+  na_idx <- is.na(tissue_raw) | tissue_raw %in% c("", "unknown", "Unknown")
+  tissue_raw[na_idx] <- "Other"
+  # 轻度美化：首字母大写、下划线转空格（skin -> Skin, large_intestine -> Large Intestine）
+  tissue_raw <- tools::toTitleCase(gsub("_", " ", tissue_raw))
+
+  cellline_tissue <- setNames(tissue_raw, ci$cell_iname)
+} else {
+  # 兜底：保留原有手写映射（cellinfo 不可用时）
+  cellline_tissue <- c(
+    A375     = "Skin", A549 = "Lung", ASC = "Other", HA1E = "Liver",
+    HCC515   = "Lung", HELA = "Cervix", HEPG2 = "Liver", HT29 = "Colon",
+    MCF10A   = "Breast", MCF7 = "Breast", NPC = "Nasopharynx", PC3 = "Prostate",
+    U2OS     = "Bone", VCAP = "Prostate", `XC.L10` = "Breast", YAPC = "Pancreas"
+  )
+}
+# 可选的手写覆盖（优先级最高）
+cellline_tissue_override <- c()
+cellline_tissue[names(cellline_tissue_override)] <- cellline_tissue_override
+
 dl_files   <- unname(drug_num_list1)
 dl_names   <- names(drug_num_list1)
 dl_cl      <- sub("^LINCS_([^_]+)_.*", "\\1", dl_files)
@@ -101,6 +120,12 @@ ss_list <- list(
   ZhangScore = "SS_ZhangScore",
   XCos = "SS_XCos"
 )
+
+# 首页统计卡片用到的汇总数字（动态计算，避免硬编码）
+n_tissue   <- length(drug_num_list_by_tissue)   # tissue（组织来源）类别数
+n_cellline <- length(unique(dl_cl))             # 细胞系数
+n_method   <- length(ss_list)                   # Signature Search Method 数
+n_gene     <- 12328                             # LINCS2020 landmark 基因数
 
 sm_quadrant <- list(
   Q1 = "Q1",
