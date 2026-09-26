@@ -26,7 +26,7 @@ For the **Single Method**, the following four steps are required:
 ① Choose the desired SSM,  
 ② Select a pharmacotranscriptomic dataset (PTD),  
 ③ Upload the **signature file (header with 'Gene' and 'log2FC')**, and  
-④ Determine the number of top genes (topN) to utilize, with guidance provided by the Benchmark or Robustness modules.  
+④ Determine the number of top genes (topN) to utilize, with guidance provided by the Benchmark module.  
 
 <div style="padding: 10px; text-align: center;">
 <img src="imgsm2.png" width = "70%" height = "70%" />

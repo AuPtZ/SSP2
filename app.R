@@ -1019,7 +1019,6 @@ server <- function(input, output, session) {
   ## Sourcing tab code  ----
   ###############################################.
   source(file.path("tab_benchmark.R"),  local = TRUE)$value
-  # Robustness module removed - data generation failed
   source(file.path("tab_application.R"),  local = TRUE)$value
   source(file.path("tab_jobcenter.R"),  local = TRUE)$value
   # source(file.path("data_tab.R"),  local = TRUE)$value

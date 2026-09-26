@@ -156,6 +156,18 @@ get_single_res_i <- function(funcname,refMatrix,sig_input,topn = NULL,
                          topN = nrow(refMatrix) / 2)
   }
   
+  if(funcname == "SS_PLAGE"){
+    res_raw <- PLAGEScore(refMatrix = refMatrix,
+                          queryUp = na.omit(sig_up),
+                          queryDown = na.omit(sig_dn))
+  }
+  
+  if(funcname == "SS_QuSAGE"){
+    res_raw <- QuSAGEScore(refMatrix = refMatrix,
+                           queryUp = na.omit(sig_up),
+                           queryDown = na.omit(sig_dn))
+  }
+  
   res_raw <- res_raw %>% 
     dplyr::arrange(desc(abs(Score)))
   
@@ -211,6 +223,8 @@ get_ss_all_res_i <- function(refMatrix,sig_input,funcname_mul,topn,direct,
     method == "SS_GSEA" ~ "GSEA",
     method == "SS_ZhangScore"~"ZhangScore",
     method == "SS_XCos" ~ "XCos",
+    method == "SS_PLAGE" ~ "PLAGE",
+    method == "SS_QuSAGE" ~ "QuSAGE",
     TRUE ~ as.character(method)  # 如果都不匹配，保持原样
   )) %>%
     group_by(name) %>%
@@ -276,36 +290,25 @@ get_ss_cross_res <- memoise::memoise(get_ss_cross_res_i,cache = local_cache_fold
 
 # ============================================================
 # 实时 null 分布 + p 值计算
-# 使用预排序 drug_rank_idx 避免重复排序，采用自适应排列策略
+# 使用预排序 drug_rank_idx 避免重复排序
+# ------------------------------------------------------------
+# 【可复现性设计】旧版 SSP 把 null 分布预先算好存成表；SSP2 改为针对当前
+# 数据集 / 阈值 **实时计算** null 分数（这样才能自动适配任意 refMatrix、
+# topN 与过滤模式）。为了在"实时"的同时拿到可复现的 p 值，这里把两件事解耦：
+#   1) 抽哪些基因做 null —— 由固定种子 NULL_SEED 决定，同一输入在任何会话 /
+#      任何机器上都抽到完全相同的 null 基因集；
+#   2) null 分数怎么算   —— 仍然实时针对当前的 refMatrix / drug_rank_idx 计算。
 # ============================================================
+NULL_SEED         <- 20240101L  # 固定种子：保证 null 基因集可复现
+NULL_N_PERM       <- 2000L      # 默认排列次数（p 值分辨率 1/n_perm = 5e-4）
+NULL_N_PERM_PLAGE <- 200L       # PLAGE 每次排列都要做一次 SVD，开销大，单独降配
+
 get_pval <- function(res_raw, refMatrix, drug_rank_idx, funcname, topn = 489) {
   n_drugs   <- ncol(refMatrix)
   all_genes <- rownames(refMatrix)
   n_genes   <- length(all_genes)
   
-  # 自适应排列：先从 200 次开始，必要时追加到 2000
-  n_init <- 200
-  n_max  <- 2000
-  
-  null_scores <- matrix(NA_real_, n_drugs, n_max)
-  
-  for (iter in 1:n_max) {
-    rand_genes <- sample(all_genes, topn * 2)
-    up_genes   <- rand_genes[1:topn]
-    dn_genes   <- rand_genes[(topn + 1):(topn * 2)]
-    
-    if (funcname %in% c("SS_Xsum", "SS_XCos")) {
-      # XSum / XCos：只需查 topN，极快
-      null_scores[, iter] <- .null_topn(refMatrix, drug_rank_idx, 
-                                         up_genes, dn_genes, topn, funcname)
-    } else {
-      # KS / GSEA / ZhangScore：使用完整排名
-      null_scores[, iter] <- .null_full(refMatrix, drug_rank_idx,
-                                         up_genes, dn_genes, n_genes, funcname)
-    }
-  }
-  
-  # 计算 p 值
+  # 观测分数（行名 = 药物名）
   obs_scores <- setNames(res_raw$Score, rownames(res_raw))
   common     <- intersect(names(obs_scores), colnames(refMatrix))
   
@@ -317,8 +320,65 @@ get_pval <- function(res_raw, refMatrix, drug_rank_idx, funcname, topn = 489) {
              mutate_if(is.numeric, round, digits = 4))
   }
   
-  obs  <- obs_scores[common]
-  null <- null_scores[match(common, colnames(refMatrix)), , drop = FALSE]
+  obs <- obs_scores[common]
+  
+  # ---- QuSAGE：解析式 null 分布，无需随机抽样，完全确定性 ----
+  # QuSAGEScore_i 已把 Score 标准化为 null 下近似 t(n_genes - 1) 的统计量
+  # （Yaari 2013 的 VIF 校正 t 样统计量），因此直接解析求 p。
+  if (funcname == "SS_QuSAGE") {
+    pvals <- 2 * stats::pt(-abs(obs), df = max(1, n_genes - 1))
+    pvals <- pmin(pmax(pvals, 0), 1)
+    names(pvals) <- NULL
+    result <- data.frame(
+      name   = common,
+      Score  = obs,
+      pvalue = pvals,
+      stringsAsFactors = FALSE
+    )
+    result$Scale_score <- .S(result$Score)
+    result$Direction   <- .D(result$Scale_score)
+    result$p.adjust    <- p.adjust(result$pvalue)
+    return(result %>% 
+             dplyr::select(name, Score, Scale_score, Direction, pvalue, p.adjust) %>%
+             mutate_if(is.numeric, round, digits = 4))
+  }
+  
+  # ---- 排列次数：PLAGE 每次排列要做一次 SVD，单独降配 ----
+  n_perm <- if (funcname == "SS_PLAGE") NULL_N_PERM_PLAGE else NULL_N_PERM
+  
+  # ---- 可复现的关键：固定 null 基因集的抽取 ----
+  # 必须显式指定 kind / normal.kind / sample.kind：R >= 3.6.0 起 sample()
+  # 的默认抽样方式（sample.kind）变更过，不显式指定会跨 R 版本不可复现。
+  old_seed <- if (exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)) {
+    get(".Random.seed", envir = .GlobalEnv)
+  } else NULL
+  on.exit(if (!is.null(old_seed)) assign(".Random.seed", old_seed, envir = .GlobalEnv),
+          add = TRUE)
+  set.seed(NULL_SEED, kind = "Mersenne-Twister",
+           normal.kind = "Inversion", sample.kind = "Rejection")
+  
+  null_scores <- matrix(NA_real_, n_drugs, n_perm)
+  
+  for (iter in seq_len(n_perm)) {
+    rand_genes <- sample(all_genes, topn * 2)
+    up_genes   <- rand_genes[1:topn]
+    dn_genes   <- rand_genes[(topn + 1):(topn * 2)]
+    
+    if (funcname %in% c("SS_Xsum", "SS_XCos")) {
+      # XSum / XCos：只需查 topN，极快
+      null_scores[, iter] <- .null_topn(refMatrix, drug_rank_idx, 
+                                         up_genes, dn_genes, topn, funcname)
+    } else if (funcname == "SS_PLAGE") {
+      # PLAGE：一次 SVD 即给出全部药物的活性，必须整列一次算完
+      null_scores[, iter] <- .null_plage(refMatrix, up_genes, dn_genes)
+    } else {
+      # KS / GSEA / ZhangScore：使用完整排名
+      null_scores[, iter] <- .null_full(refMatrix, drug_rank_idx,
+                                         up_genes, dn_genes, n_genes, funcname)
+    }
+  }
+  
+  null  <- null_scores[match(common, colnames(refMatrix)), , drop = FALSE]
   pvals <- rowMeans(abs(null) >= abs(obs), na.rm = TRUE)
   
   result <- data.frame(
@@ -460,6 +520,17 @@ get_pval <- function(res_raw, refMatrix, drug_rank_idx, funcname, topn = 489) {
   return(score)
 }
 
+# ---- PLAGE 的 null 统计量（Tomfohr 2005）----
+# 与观测统计量完全一致：随机基因集子矩阵 z-score 后取第一主成分活性。
+# 注意：一次 SVD 就给出全部药物的活性，因此整列一次算完（不能按药物逐个算）。
+.null_plage <- function(refMatrix, up_genes, dn_genes) {
+  zero <- rep(0, ncol(refMatrix))
+  a_up <- if (length(up_genes) >= 2) .plage_activity(refMatrix[up_genes, , drop = FALSE]) else zero
+  a_dn <- if (length(dn_genes) >= 2) .plage_activity(refMatrix[dn_genes, , drop = FALSE]) else zero
+  scores <- a_up - a_dn
+  scores[is.na(scores)] <- 0
+  return(scores)
+}
 
 draw_single <- function(data){
   

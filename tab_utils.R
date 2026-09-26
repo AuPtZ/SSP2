@@ -188,13 +188,6 @@ if (!exists("tip_seen", mode = "environment") || is.null(tip_seen)) {
 .observe_tip("intro_res_sm_cross_", "www/info_Q9_sm_cross.md", "Quick Tip")
 .observe_tip("intro_res_sm_all_",  "www/info_Q9_sm_all.md",  "Quick Tip")
 
-observeEvent(input$intro_res_rb, {
-  showModal(modalDialog(
-    includeMarkdown("www/info_Q9_rb.md"),
-    title = "Quick Tip", size = "l", easyClose = T
-  ))
-})
-
 # FOR EACH PAGE
 observeEvent(input$runBENdemo,{
   load("demo/BEN1712624574ZFX.rdata")

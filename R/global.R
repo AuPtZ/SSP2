@@ -118,7 +118,9 @@ ss_list <- list(
   CMap = "SS_CMap",
   GSEA = "SS_GSEA",
   ZhangScore = "SS_ZhangScore",
-  XCos = "SS_XCos"
+  XCos = "SS_XCos",
+  PLAGE = "SS_PLAGE",
+  QuSAGE = "SS_QuSAGE"
 )
 
 # 首页统计卡片用到的汇总数字（动态计算，避免硬编码）
@@ -189,6 +191,10 @@ rename_col_rules <- c("XSum" = "auc_xsum",
                       "GSEA" = "gsea", 
                       "ZhangScore" = "zhangscore", 
                       "XCos" = "cos",
+                      "PLAGE" = "auc_plage", "QuSAGE" = "auc_qusage",
+                      "PLAGE" = "es_plage",  "QuSAGE" = "es_qusage",
+                      "PLAGE" = "SS_PLAGE",  "QuSAGE" = "SS_QuSAGE",
+                      "PLAGE" = "plage",     "QuSAGE" = "qusage",
                       "Name" = "name",
                       "ScoreSum" = "cal_label",
                       "P_value" = "nominal_padj",

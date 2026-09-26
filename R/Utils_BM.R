@@ -75,6 +75,30 @@ get_auc_all_i <- function(topn=5,refMatrix,sig_input,IC50_drug,get_ss){
     
   }
   
+  # PLAGE / QuSAGE：与 XSum / CMap / GSEA / ZhangScore 同属 up/down 基因集路线。
+  # 性能提示：topN 从 10 扫到 1000 约 1000 次调用，PLAGE 每次要做一次特征分解、
+  # QuSAGE 每次要估一次基因集内两两相关，首次计算明显慢于原 5 法；
+  # get_auc_all 按 topn 做了 memoise，已算过的 topn 会命中缓存。
+  if ("SS_PLAGE" %in% get_ss){
+    res_plage_raw <- PLAGEScore(refMatrix,
+                                queryUp = na.omit(sig1_up[1:topn]) ,
+                                queryDown = na.omit(sig1_dn[1:topn]))
+    res_plage_roc <- res_plage_raw %>% process_raw1(drug_info = IC50_drug)
+    auc_plage <- as.numeric(res_plage_roc$auc)/100
+    res_dr_auc[["auc_plage"]] <- auc_plage
+    
+  }
+  
+  if ("SS_QuSAGE" %in% get_ss){
+    res_qusage_raw <- QuSAGEScore(refMatrix,
+                                  queryUp = na.omit(sig1_up[1:topn]) ,
+                                  queryDown = na.omit(sig1_dn[1:topn]))
+    res_qusage_roc <- res_qusage_raw %>% process_raw1(drug_info = IC50_drug)
+    auc_qusage <- as.numeric(res_qusage_roc$auc)/100
+    res_dr_auc[["auc_qusage"]] <- auc_qusage
+    
+  }
+  
   # gc()
   # print(paste0("AUC ",topn))
   return(res_dr_auc %>% lapply(round,4))
@@ -159,6 +183,26 @@ get_es_all_i <- function(topn=5,refMatrix,sig_input,drug_sig,get_ss){
                              topN = nrow(refMatrix)/2)
     es_cos <- process_raw2(res_ss_list = setNames(res_cos_raw[ ,1],rownames(res_cos_raw)),drug_sig_input = drug_sig)
     res_dr_es[["es_cos"]] <- es_cos
+    
+  }
+  
+  # PLAGE / QuSAGE（同 get_auc_all_i 的性能提示：在 topN 扫描下首次计算更慢，
+  # get_es_all 按 topn memoise，缓存命中后复用）
+  if ("SS_PLAGE" %in% get_ss){
+    res_plage_raw <- PLAGEScore(refMatrix,
+                                queryUp = na.omit(sig1_up[1:topn]) ,
+                                queryDown = na.omit(sig1_dn[1:topn]))
+    es_plage <- process_raw2(res_ss_list = setNames(res_plage_raw[ ,1],rownames(res_plage_raw)),drug_sig_input = drug_sig)
+    res_dr_es[["es_plage"]] <- es_plage
+    
+  }
+  
+  if ("SS_QuSAGE" %in% get_ss){
+    res_qusage_raw <- QuSAGEScore(refMatrix,
+                                  queryUp = na.omit(sig1_up[1:topn]) ,
+                                  queryDown = na.omit(sig1_dn[1:topn]))
+    es_qusage <- process_raw2(res_ss_list = setNames(res_qusage_raw[ ,1],rownames(res_qusage_raw)),drug_sig_input = drug_sig)
+    res_dr_es[["es_qusage"]] <- es_qusage
     
   }
   
@@ -326,6 +370,15 @@ get_auc_fc_i <- function(fc = 0.5, refMatrix, sig_input, IC50_drug, get_ss) {
     r <- XCosScore(refMatrix, query = qv, topN = halfN)
     res_dr_auc[["auc_cos"]] <- as.numeric(process_raw1(r, IC50_drug)$auc) / 100
   }
+  # PLAGE / QuSAGE（性能同 topN 版：首次计算更慢，get_auc_fc 按 fc 值 memoise）
+  if ("SS_PLAGE" %in% get_ss) {
+    r <- PLAGEScore(refMatrix, queryUp = na.omit(sig_up), queryDown = na.omit(sig_dn))
+    res_dr_auc[["auc_plage"]] <- as.numeric(process_raw1(r, IC50_drug)$auc) / 100
+  }
+  if ("SS_QuSAGE" %in% get_ss) {
+    r <- QuSAGEScore(refMatrix, queryUp = na.omit(sig_up), queryDown = na.omit(sig_dn))
+    res_dr_auc[["auc_qusage"]] <- as.numeric(process_raw1(r, IC50_drug)$auc) / 100
+  }
   return(res_dr_auc %>% lapply(round, 4))
 }
 
@@ -363,6 +416,15 @@ get_es_fc_i <- function(fc = 0.5, refMatrix, sig_input, drug_sig, get_ss) {
     qv <- setNames(sig_f$log2FC, sig_f$Gene)
     r <- XCosScore(refMatrix, query = qv, topN = halfN)
     res_dr_es[["es_cos"]] <- process_raw2(setNames(r[,1], rownames(r)), drug_sig)
+  }
+  # PLAGE / QuSAGE（性能同 topN 版：首次计算更慢，get_es_fc 按 fc 值 memoise）
+  if ("SS_PLAGE" %in% get_ss) {
+    r <- PLAGEScore(refMatrix, queryUp = na.omit(sig_up), queryDown = na.omit(sig_dn))
+    res_dr_es[["es_plage"]] <- process_raw2(setNames(r[,1], rownames(r)), drug_sig)
+  }
+  if ("SS_QuSAGE" %in% get_ss) {
+    r <- QuSAGEScore(refMatrix, queryUp = na.omit(sig_up), queryDown = na.omit(sig_dn))
+    res_dr_es[["es_qusage"]] <- process_raw2(setNames(r[,1], rownames(r)), drug_sig)
   }
   return(res_dr_es %>% lapply(round, 4))
 }
@@ -503,7 +565,7 @@ draw_dr_auc <- function(res_input){
     values_to = "AUC") %>% as_tibble() %>%
     mutate(`AUC` = as.numeric(`AUC`),
            `TopN` =as.numeric(`TopN`),
-           method = factor(method, levels = c("CMap", "GSEA", "XCos","XSum","ZhangScore")),
+           method = factor(method, levels = c("CMap", "GSEA", "XCos","XSum","ZhangScore","PLAGE","QuSAGE")),
            )
   
   first_row_value <- res_input[1,1] %>% pull()
@@ -525,7 +587,7 @@ draw_dr_es <- function(res_input){
     values_to = "ES") %>% as_tibble() %>%
     mutate(`ES` = as.numeric(`ES`),
            `TopN` =as.numeric(`TopN`),
-           method = factor(method, levels = c("CMap", "GSEA", "XCos","XSum","ZhangScore")),
+           method = factor(method, levels = c("CMap", "GSEA", "XCos","XSum","ZhangScore","PLAGE","QuSAGE")),
     )
 
   
@@ -564,7 +626,7 @@ draw_dr_auc_fc <- function(res_input) {
   res_auc <- res_input %>% as_tibble() %>% pivot_longer(
     cols = -logFC, names_to = "method", values_to = "AUC") %>%
     mutate(AUC = as.numeric(AUC), logFC = as.numeric(logFC),
-           method = factor(method, levels = c("CMap","GSEA","XCos","XSum","ZhangScore")))
+           method = factor(method, levels = c("CMap","GSEA","XCos","XSum","ZhangScore","PLAGE","QuSAGE")))
 
   first_val <- res_input[1, 1] %>% pull()
 
@@ -581,7 +643,7 @@ draw_dr_es_fc <- function(res_input) {
   res_es <- res_input %>% as_tibble() %>% pivot_longer(
     cols = -logFC, names_to = "method", values_to = "ES") %>%
     mutate(ES = as.numeric(ES), logFC = as.numeric(logFC),
-           method = factor(method, levels = c("CMap","GSEA","XCos","XSum","ZhangScore")))
+           method = factor(method, levels = c("CMap","GSEA","XCos","XSum","ZhangScore","PLAGE","QuSAGE")))
 
   first_val <- res_input[1, 1] %>% pull()
 
