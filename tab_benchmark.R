@@ -21,22 +21,51 @@ library(memoise)
 output$display_bm <- renderUI(initial_bm)
 
 # === 方案C：作业轮询显示 ===
-rv_bm_job <- reactiveVal(NULL)   # 当前正在等待结果的 jobid
+rv_bm_job  <- reactiveVal(NULL)   # 当前正在等待结果的 jobid
+rv_bm_prog <- reactiveVal(list(done = 0L, total = 0L))   # worker 写回的进度
+
+# 真实进度条：渲染 worker 写入 job_progress 的打点数。
+# 注意不能用 shiny::Progress —— 计算在 worker 进程里，Shiny 会话内的
+# Progress 对象无法反映其进度，且生命周期只有毫秒级，浏览器根本来不及显示。
+output$bm_progress <- renderUI({
+  pr <- rv_bm_prog()
+  req(is.list(pr), pr$total > 0)
+  pct <- max(0L, min(100L, floor(100L * as.numeric(pr$done) / as.numeric(pr$total))))
+  shiny::tagList(
+    shiny::tags$div(
+      class = "progress", style = "height: 24px; margin: 14px 0 6px 0;",
+      shiny::tags$div(
+        class = "progress-bar progress-bar-striped progress-bar-animated",
+        role = "progressbar",
+        style = sprintf("width: %d%%; background-color: #0275d8;", pct),
+        sprintf("%d%%", pct)
+      )
+    ),
+    shiny::tags$p(sprintf("Computed %d / %d steps", pr$done, pr$total),
+                  style = "margin:0; color:#666;")
+  )
+})
+
 observe({
   jid <- rv_bm_job()
   req(jid)
   st <- get_job_status(jid)
   status <- if (nrow(st) == 0) "pending" else st$status[1]
   if (status %in% c("pending", "running")) {
-    invalidateLater(3000)         # 未完成 -> 3 秒后再查（完成后自动停止）
+    rv_bm_prog(get_job_progress(jid))   # 未完成 -> 同步 worker 进度
+    invalidateLater(3000)               # 3 秒后再查（完成后自动停止）
   } else if (status == "error") {
     rv_bm_job(NULL)
+    rv_bm_prog(list(done = 0L, total = 0L, msg = ""))  # 收尾：total=0 -> 进度条隐藏
     emsg <- if (nrow(st)) st$error_msg[1] else "unknown error"
     sendSweetAlert(session, title = "Error...",
                    text = paste("Computation failed:", emsg), type = "error")
     output$display_bm <- renderUI(initial_bm)
   } else {                        # done
     rv_bm_job(NULL)
+    # 轮询到此为止，rv_bm_prog 若不复位就会永远停在最后一次读到的进度
+    # （如 "Computed 50 / 102"），和已渲染的结果图并排显示，像是没跑完。
+    rv_bm_prog(list(done = 0L, total = 0L, msg = ""))
     job_info <- read_from_db(jid)
     output$display_bm <- renderUI({ res_plot(job_info, prefix = "bm") })
   }
@@ -86,16 +115,7 @@ observeEvent(input$runBM, {
       output$display_bm <- renderUI(initial_bm)
     }
     
-    #### Create a Progress object
-    progress_bm <- shiny::Progress$new()
-    
-    # Make sure it closes when we exit this reactive, even if there's an error
-    # on.exit(progress$close())
-    
-    progress_bm$set(message = paste0("Performing ", jobid_bm), value = 0)
-    #### 
-    
-    
+    #### 校验输入（进度显示见 output$bm_progress，由轮询 worker 进度驱动）
     req(length(input$sel_ss)>1)
     req(!(is.null(input$file_IC50) & is.null(input$file_FDA)))
     req(!is.null(input$file_sig))
@@ -120,9 +140,6 @@ observeEvent(input$runBM, {
     sel_ss = input$sel_ss
     filter_mode = input$filter_mode_bm
     
-    ###
-    progress_bm$inc(0.2, detail = paste("file loaded, computing"))
-    ###
 
     # === 方案C：把计算入队，由独立 worker 执行；前端轮询 job_queue 状态显示 ===
     nz <- function(x) if (is.null(x) || length(x) == 0) NA_character_ else x
@@ -144,7 +161,6 @@ observeEvent(input$runBM, {
       meta = meta
     )
     rv_bm_job(jobid_bm)
-    progress_bm$close()
 
     output$display_bm <- renderUI({ ## renderUI 
       shiny::tagList(
@@ -159,9 +175,10 @@ observeEvent(input$runBM, {
         },
         shiny::h3(if (filter_mode == "logFC") 
           "SSP will compute the |log2FC| threshold from 0.50 to maximum."
-          else "SSP will compute the topN from 10 to 1000 (or up to the number of genes if larger)."),
+          else "SSP will compute the topN from 10 to the number of genes in one direction (Up or Down), capped at 1000."),
         shiny::h3(paste0("Your jobid is ",jobid_bm)),
         shiny::h3("Please remember it for retrieve results in Job Center."),
+        shiny::uiOutput("bm_progress"),
 
         tags$script(HTML("
                 $(document).on('shiny:visualchange', function(event) {

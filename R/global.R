@@ -213,7 +213,12 @@ get_cores <- function(){
     return(1L)
   }else{
     cores <-  parallel::detectCores()
-    return( ifelse( cores> 15, round(0.25*cores), round(0.5*cores)))
+    # 原本对大核机器(>15)按 0.25 折算，96 核机器因此只用到 24 核：实测 load
+    # 长期停在 27/96（约 28% 利用率），内存也远未吃满（可用 554G）。
+    # Benchmark 的 mclapply 只在「扫描点」维度并行，而扫描点数(991)远多于核数，
+    # 并行效率很高，所以提高并发是实打实的收益。统一按 0.5 折算
+    # （96 核 -> 48 进程），同样负载下约快一倍。
+    return( round(0.5*cores))
   }
 }
 

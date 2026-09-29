@@ -31,17 +31,43 @@ QUEUE_DIR <- "cache/queue"          # 存放每个任务的参数 rds
   pids[pids > 0 & pids != Sys.getpid()]
 }
 
-# 若存活 worker 数 < target，则自动拉起一个（wait=FALSE 不阻塞 Shiny 会话）。
+# 若存活 worker 数 < target，则自动拉起一个（不阻塞 Shiny 会话）。
 # 调用方无需关心 worker 是否已在运行：本函数保证最终至少有一个。
+#
+# 用 processx 而不是 system()：system() 拉起后立刻返回、再也拿不到任何反馈，
+# worker 若因缺包等原因启动即崩，任务会静默卡在 pending，前端只显示 "Loading..."
+# 而毫无提示（2026-09-28 踩过：worker 在 library(shinyBS) 处 Execution halted，
+# 用户干等 22 分钟）。processx 能拿到进程句柄，启动后短等一下即可判断是否存活，
+# 失败直接 stop() 并附上日志尾部，让错误在提交的那一刻就暴露。
+#
+# 另：显式用 file.path(R.home("bin"), "Rscript") 而不是 PATH 里的 "Rscript"，
+# 确保 worker 与当前 Shiny 会话跑的是同一个 R，库路径一致，避免因 .libPaths()
+# 指向另一个 R 环境而缺包。
 ensure_worker_running <- function(target = 1) {
   alive <- .worker_pids_alive()
   if (length(alive) >= target) return(invisible(alive))
   logf <- file.path("log", sprintf("worker_auto_%d.log", Sys.getpid()))
-  if (!dir.exists("log")) dir.create("log", showWarnings = FALSE)
-  suppressWarnings(
-    system(sprintf("Rscript worker.R > %s 2>&1", shQuote(logf)), wait = FALSE)
+  if (!dir.exists("log")) dir.create("log", showWarnings = FALSE, recursive = TRUE)
+
+  p <- processx::process$new(
+    command = file.path(R.home("bin"), "Rscript"),
+    args    = "worker.R",
+    wd      = getwd(),
+    stdout  = logf, stderr = logf,
+    cleanup = FALSE    # 常驻进程：进程对象被回收 / Shiny 重启都不要杀掉它
   )
-  message(sprintf("[queue] no live worker found, auto-spawned worker.R (target=%d)", target))
+  # 给 worker 一点时间启动；缺包导致的失败通常在 source(R/*.R) 阶段就已退出
+  Sys.sleep(2)
+  if (!p$is_alive()) {
+    st   <- tryCatch(p$get_exit_status(), error = function(e) NA_integer_)
+    tail <- tryCatch(paste(tail(readLines(logf, warn = FALSE), 10), collapse = "\n"),
+                     error = function(e) "")
+    stop(sprintf(
+      "worker.R 启动后立刻退出（exit=%s），任务不会被执行。详见 %s ：\n%s",
+      st, logf, tail), call. = FALSE)
+  }
+  message(sprintf("[queue] no live worker found, auto-spawned worker.R (pid=%s, target=%d)",
+                  p$get_pid(), target))
   invisible(.worker_pids_alive())
 }
 
@@ -59,7 +85,24 @@ ensure_job_queue_table <- function(con) {
       started_time   TEXT,
       finished_time  TEXT,
       error_msg      TEXT,
-      worker_pid     INTEGER
+      worker_pid     INTEGER,
+      progress_total INTEGER,
+      progress_msg   TEXT
+    )")
+  # 兼容旧库：表已存在时补齐进度列
+  cols <- RSQLite::dbListFields(con, "job_queue")
+  if (!"progress_total" %in% cols)
+    RSQLite::dbExecute(con, "ALTER TABLE job_queue ADD COLUMN progress_total INTEGER")
+  if (!"progress_msg" %in% cols)
+    RSQLite::dbExecute(con, "ALTER TABLE job_queue ADD COLUMN progress_msg TEXT")
+
+  # 进度打点表：每完成一步追加一行，前端用 COUNT(*) 取已完成数。
+  # 之所以用「追加 + 计数」而不是 UPDATE 同一行，是因为 Benchmark 的扫描跑在
+  # mclapply 的 fork 子进程里，多个子进程并发 UPDATE 同一行会互相覆盖/锁等待。
+  RSQLite::dbExecute(con, "
+    CREATE TABLE IF NOT EXISTS job_progress (
+      jobid   TEXT,
+      tick_at TEXT
     )")
   invisible(NULL)
 }
@@ -142,8 +185,97 @@ mark_job <- function(jobid, status, error_msg = NA_character_) {
 }
 
 # ---------------------------------------------------------------------------
-# 由 meta 构建 res 元数据 df1（与 tab_utils.R::write_in_db 的字段完全一致，
-# 只是数据来源从 input 换成入队时捕获的 meta）
+# 进度上报（给前端轮询渲染真实进度条）
+#
+# 约束：Benchmark 的 topN/FC 扫描跑在 parallel::mclapply 的 fork 子进程里，
+# 所以进度不能靠"函数返回值"传递，必须由计算侧主动写库。fork 会继承父进程
+# 内存，因此子进程同样能读到这里的 job 上下文，并各自建连接写打点。
+# ---------------------------------------------------------------------------
+.ssp_job_ctx <- new.env(parent = emptyenv())
+
+# worker 开始执行某任务时绑定；任务结束置 NULL
+set_job_context <- function(jobid) { .ssp_job_ctx$jobid <- jobid; invisible(jobid) }
+get_job_context <- function() .ssp_job_ctx$jobid
+
+# 任务开始时调用：写入总步数，并清空上一轮遗留的打点
+init_job_progress <- function(jobid, total, msg = "") {
+  if (is.null(jobid) || is.na(jobid)) return(invisible(NULL))
+  con <- RSQLite::dbConnect(RSQLite::SQLite(), QUEUE_DB)
+  on.exit(RSQLite::dbDisconnect(con))
+  RSQLite::dbExecute(con, "PRAGMA busy_timeout=8000;")
+  ensure_job_queue_table(con)
+  RSQLite::dbExecute(con, "DELETE FROM job_progress WHERE jobid=?", params = list(jobid))
+  RSQLite::dbExecute(con,
+    "UPDATE job_queue SET progress_total=?, progress_msg=? WHERE jobid=?",
+    params = list(as.integer(total), as.character(msg), jobid))
+  invisible(NULL)
+}
+
+# 完成一步：追加一行打点。静默失败——进度上报绝不能拖垮/中断计算。
+tick_job_progress <- function(jobid = get_job_context()) {
+  if (is.null(jobid) || is.na(jobid)) return(invisible(NULL))
+  con <- tryCatch({
+    cc <- RSQLite::dbConnect(RSQLite::SQLite(), QUEUE_DB)
+    RSQLite::dbExecute(cc, "PRAGMA busy_timeout=8000;")
+    cc
+  }, error = function(e) NULL)
+  if (is.null(con)) return(invisible(NULL))
+  on.exit(RSQLite::dbDisconnect(con), add = TRUE)
+  tryCatch({
+    RSQLite::dbExecute(con,
+      "INSERT INTO job_progress (jobid, tick_at) VALUES (?, ?)",
+      params = list(jobid, as.character(Sys.time())))
+  }, error = function(e) NULL)
+  invisible(NULL)
+}
+
+# 前端轮询：返回 list(done, total, msg)；total=0 表示任务尚未开始计算
+get_job_progress <- function(jobid) {
+  con <- RSQLite::dbConnect(RSQLite::SQLite(), QUEUE_DB)
+  on.exit(RSQLite::dbDisconnect(con))
+  RSQLite::dbExecute(con, "PRAGMA busy_timeout=8000;")
+  if (!RSQLite::dbExistsTable(con, "job_queue"))
+    return(list(done = 0L, total = 0L, msg = ""))
+  q <- RSQLite::dbGetQuery(con,
+    "SELECT progress_total, progress_msg FROM job_queue WHERE jobid=?",
+    params = list(jobid))
+  total <- if (nrow(q) && !is.na(q$progress_total[1])) as.integer(q$progress_total[1]) else 0L
+  msg   <- if (nrow(q) && !is.na(q$progress_msg[1])) as.character(q$progress_msg[1]) else ""
+  done <- 0L
+  if (RSQLite::dbExistsTable(con, "job_progress")) {
+    done <- as.integer(RSQLite::dbGetQuery(con,
+      "SELECT COUNT(*) AS n FROM job_progress WHERE jobid=?",
+      params = list(jobid))$n)
+  }
+  list(done = done, total = total, msg = msg)
+}
+
+# 任务结束后清理打点，避免表无限增长
+clear_job_progress <- function(jobid) {
+  con <- tryCatch({
+    cc <- RSQLite::dbConnect(RSQLite::SQLite(), QUEUE_DB)
+    RSQLite::dbExecute(cc, "PRAGMA busy_timeout=8000;")
+    cc
+  }, error = function(e) NULL)
+  if (is.null(con)) return(invisible(NULL))
+  on.exit(RSQLite::dbDisconnect(con), add = TRUE)
+  tryCatch({
+    if (RSQLite::dbExistsTable(con, "job_progress"))
+      RSQLite::dbExecute(con, "DELETE FROM job_progress WHERE jobid=?", params = list(jobid))
+    # 同时复位 job_queue 上的进度显示字段。只删打点表的话，任务结束后
+    # progress_total/progress_msg 仍停留在最后一次扫描的读数（如 "Benchmark
+    # scanning" / 102），任谁查库都会误以为任务还没跑完。置 NULL 即等于
+    # "无进度可读"，前端 req(total > 0) 也就不再渲染进度条，正是结束态应有表现。
+    RSQLite::dbExecute(con,
+      "UPDATE job_queue SET progress_total=NULL, progress_msg=NULL WHERE jobid=?",
+      params = list(jobid))
+  }, error = function(e) NULL)
+  invisible(NULL)
+}
+
+# ---------------------------------------------------------------------------
+# 由 meta 构建 res 元数据 df1。字段布局的**唯一权威定义**在此；
+# 旧的同义副本 write_in_db / db_write_result 已删除，勿再复制一份。
 # ---------------------------------------------------------------------------
 build_df1 <- function(jobid, submitted_time, module, sub_module, table_num, meta) {
   fm <- meta$filter_mode
@@ -203,7 +335,7 @@ build_df1 <- function(jobid, submitted_time, module, sub_module, table_num, meta
 }
 
 # ---------------------------------------------------------------------------
-# worker 侧：写结果表 + 追加 res 元数据（等价于 write_in_db，但不依赖 input）
+# worker 侧：写结果表 + 追加 res 元数据（全项目唯一的写结果入口）
 # ---------------------------------------------------------------------------
 write_result_from_meta <- function(jobid, submitted_time, module, sub_module,
                                    table_num, table_res, meta) {
@@ -229,6 +361,12 @@ run_job <- function(job) {
   j    <- readRDS(file.path(QUEUE_DIR, paste0(job$jobid, ".rds")))
   p    <- j$params
   meta <- j$meta
+
+  # 绑定 job 上下文：计算函数内的 tick_job_progress() 由此知道写哪个任务。
+  # 总步数先置 0（表示"尚未进入扫描循环"），由各模块计算函数再 init 真实值。
+  set_job_context(j$jobid)
+  init_job_progress(j$jobid, 0L, "starting")
+  on.exit({ clear_job_progress(j$jobid); set_job_context(NULL) }, add = TRUE)
 
   if (j$module == "Benchmark") {
     res_bm <- get_benchmark(

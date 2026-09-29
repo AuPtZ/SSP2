@@ -26,6 +26,16 @@ get_single_method_i  <- function(drug_profile, topn = NULL, filter_mode = "topN"
     ))
   }
   
+  # ---- 进度总步数：get_pval 的每轮置换打点一次 ----
+  # PLAGE 的置换次数单独降配（NULL_N_PERM_PLAGE），故按方法分别估算。
+  nperm_of <- function(fn) if (fn == "SS_PLAGE") NULL_N_PERM_PLAGE else NULL_N_PERM
+  n_total <- switch(sel_model_sm1,
+    singlemethod = nperm_of(funcname),
+    SS_all       = sum(vapply(funcname_mul, nperm_of, integer(1))),
+    SS_cross     = 2L * nperm_of(funcname),
+    0L)
+  init_job_progress(get_job_context(), as.integer(n_total), "Application")
+
   if(sel_model_sm1 == "singlemethod"){
     
     res_sm <- get_single_res(funcname = funcname,
@@ -376,6 +386,7 @@ get_pval <- function(res_raw, refMatrix, drug_rank_idx, funcname, topn = 489) {
       null_scores[, iter] <- .null_full(refMatrix, drug_rank_idx,
                                          up_genes, dn_genes, n_genes, funcname)
     }
+    tick_job_progress()   # 每完成一轮 null 置换打点一次
   }
   
   null  <- null_scores[match(common, colnames(refMatrix)), , drop = FALSE]

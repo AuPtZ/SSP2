@@ -17,22 +17,48 @@ library(memoise)
 output$display_sm <- renderUI({initial_sm})
 
 # === 方案C：作业轮询显示 ===
-rv_sm_job <- reactiveVal(NULL)   # 当前正在等待结果的 jobid
+rv_sm_job  <- reactiveVal(NULL)   # 当前正在等待结果的 jobid
+rv_sm_prog <- reactiveVal(list(done = 0L, total = 0L))   # worker 写回的进度
+
+# 真实进度条：渲染 worker 写入 job_progress 的打点数
+output$sm_progress <- renderUI({
+  pr <- rv_sm_prog()
+  req(is.list(pr), pr$total > 0)
+  pct <- max(0L, min(100L, floor(100L * as.numeric(pr$done) / as.numeric(pr$total))))
+  shiny::tagList(
+    shiny::tags$div(
+      class = "progress", style = "height: 24px; margin: 14px 0 6px 0;",
+      shiny::tags$div(
+        class = "progress-bar progress-bar-striped progress-bar-animated",
+        role = "progressbar",
+        style = sprintf("width: %d%%; background-color: #0275d8;", pct),
+        sprintf("%d%%", pct)
+      )
+    ),
+    shiny::tags$p(sprintf("Computed %d / %d steps", pr$done, pr$total),
+                  style = "margin:0; color:#666;")
+  )
+})
+
 observe({
   jid <- rv_sm_job()
   req(jid)
   st <- get_job_status(jid)
   status <- if (nrow(st) == 0) "pending" else st$status[1]
   if (status %in% c("pending", "running")) {
+    rv_sm_prog(get_job_progress(jid))   # 未完成 -> 同步 worker 进度
     invalidateLater(3000)
   } else if (status == "error") {
     rv_sm_job(NULL)
+    rv_sm_prog(list(done = 0L, total = 0L, msg = ""))  # 收尾：total=0 -> 进度条隐藏
     emsg <- if (nrow(st)) st$error_msg[1] else "unknown error"
     sendSweetAlert(session, title = "Error...",
                    text = paste("Computation failed:", emsg), type = "error")
     output$display_sm <- renderUI({initial_sm})
   } else {                        # done
     rv_sm_job(NULL)
+    # 同 benchmark：不复位就会把最后一格的进度读数留在已渲染的结果旁边
+    rv_sm_prog(list(done = 0L, total = 0L, msg = ""))
     job_info <- read_from_db(jid)
     output$display_sm <- renderUI({ res_plot(job_info, prefix = "sm") })
   }
@@ -75,16 +101,7 @@ observeEvent(input$runSM, {
     }
     
     
-    #### Create a Progress object
-    progress_sm <- shiny::Progress$new()
-    
-    # Make sure it closes when we exit this reactive, even if there's an error
-    # on.exit(progress$close())
-    
-    progress_sm$set(message = paste0("Performing ", jobid_sm), value = 0)
-    #### 
-    
-    
+    #### 校验输入（进度显示见 output$sm_progress，由轮询 worker 进度驱动）
     drug_profile = input$sel_experiment_sm
     filter_mode  = input$filter_mode_sm
     topn         = input$sel_topn_sm
@@ -127,10 +144,6 @@ observeEvent(input$runSM, {
       )
       
     }
-    ###
-    progress_sm$inc(0.2, detail = paste("file loaded, computing"))
-    ###
-
     # === 方案C：把计算入队，由独立 worker 执行；前端轮询 job_queue 状态显示 ===
     nz <- function(x) if (is.null(x) || length(x) == 0) NA_character_ else x
     meta <- list(
@@ -159,8 +172,6 @@ observeEvent(input$runSM, {
       meta = meta
     )
     rv_sm_job(jobid_sm)
-    progress_sm$close()
-
 
     output$display_sm <- renderUI({ 
       shiny::tagList(
@@ -168,6 +179,7 @@ observeEvent(input$runSM, {
         shiny::h3("It may take 15~30 mins to get result"),
         shiny::h3(paste0("Your jobid is ",jobid_sm)),
         shiny::h3("Please remember it for retrieve results in Job Center."),
+        shiny::uiOutput("sm_progress"),
         # 添加一个JS代码块来通知Shiny服务器端
         tags$script(HTML("
                 $(document).on('shiny:visualchange', function(event) {

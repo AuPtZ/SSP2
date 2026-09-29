@@ -29,7 +29,7 @@ suppressPackageStartupMessages({
   source("R/SS.R")                           # 签名搜索算法
   source("R/Utils_BM.R")                     # get_benchmark ...
   source("R/Utils_SM.R")                     # get_single_method ...
-  source("R/db_utils.R")
+                                             # R/db_utils.R 已删除（死代码，收敛进 queue_utils.R）
   source("R/queue_utils.R")                  # 队列 + 写库助手（本方案核心）
 })
 
@@ -51,9 +51,14 @@ repeat {
     run_job(job)
     TRUE
   }, error = function(e) {
-    mark_job(job$jobid, "error", conditionMessage(e))
-    message(sprintf("[%s] ERROR %s: %s",
-                    format(Sys.time()), job$jobid, conditionMessage(e)))
+    # 只记 conditionMessage 常常只有一句 "subscript out of bounds"，无从定位；
+    # 附上出错的那个 call（conditionCall）即可直接看出是哪个函数/下标出错。
+    cc  <- tryCatch(paste(deparse(conditionCall(e)), collapse = " "),
+                    error = function(e2) "")
+    msg <- if (nzchar(cc)) sprintf("%s  @  %s", conditionMessage(e), cc)
+           else conditionMessage(e)
+    mark_job(job$jobid, "error", msg)
+    message(sprintf("[%s] ERROR %s: %s", format(Sys.time()), job$jobid, msg))
     FALSE
   })
 

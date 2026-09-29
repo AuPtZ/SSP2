@@ -145,7 +145,7 @@ read_from_db <- function(Jobid_query){
     # 按列名对齐：build_df1（方案 C）只写相关列（如 Benchmark 12 列），
     # 而 name_for_res_col 定义了全部 21 个标签。取两者交集并按
     # name_for_res_col 的顺序对齐，避免 t() 后行数不一致导致 cbind 报错
-    # （旧 write_in_db 写满 21 列故一直对齐，方案 C 改为按需写列）。
+    # （res 表按需写列：本次任务用不到的列不会出现，靠 .ensure_res_cols 自动扩列）。
     keep <- intersect(names(name_for_res_col), names(retrieve_job))
     retrieve_job <- data.frame(
       V2 = unname(unlist(name_for_res_col[keep])),

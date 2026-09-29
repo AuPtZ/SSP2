@@ -1,159 +1,6 @@
 # benchmark和application的结果保存
 # 这个页面提供的是需要在不同页面使用的，超过2次以上的功能
 
-# 确保共享元数据表 "res" 存在（首次写入时创建，后续新增字段时自动 ALTER 扩列）
-ensure_res_table <- function(con, df1) {
-  if (!RSQLite::dbExistsTable(con, "res")) {
-    RSQLite::dbWriteTable(con, "res", df1)
-    return(invisible(NULL))
-  }
-  existing <- RSQLite::dbListFields(con, "res")
-  for (col in setdiff(names(df1), existing)) {
-    RSQLite::dbExecute(con, sprintf('ALTER TABLE res ADD COLUMN "%s"', col))
-  }
-  invisible(NULL)
-}
-
-write_in_db <- function(Jobid, Submitted_time, module_name,
-                        sub_module, table_num = 1, table_res){
-  # 获取公用的 filter mode 信息
-  if (module_name == "Benchmark") {
-    fm <- input$filter_mode_bm
-  } else {
-    fm <- input$filter_mode_sm
-  }
-  fv <- if (fm == "logFC") input$sel_fc_sm else input$sel_topn_sm
-
-  if(module_name == "Benchmark"){
-    if(sub_module == "AUC"){
-      df1 <- data.frame(
-        Jobid = Jobid,
-        Submitted_time = Submitted_time,
-        main_module = module_name,
-        table_num = table_num,
-        drug_profile = input$sel_experiment,
-        method_bm = paste0(find_original_names(input$sel_ss),collapse = ", "),
-        signature_file1 = input$file_sig$name,
-        ic50_file = input$file_IC50$name,
-        sub_module = sub_module,
-        filter_mode = fm,
-        filter_value = fv
-      )
-    }
-    if(sub_module == "ES"){
-      df1 <- data.frame(
-        Jobid = Jobid,
-        Submitted_time = Submitted_time,
-        main_module = module_name,
-        table_num = table_num,
-        drug_profile = input$sel_experiment,
-        method_bm = paste0(find_original_names(input$sel_ss),collapse = ", "),
-        signature_file1 = input$file_sig$name,
-        fda_file = input$file_FDA$name,
-        sub_module = sub_module,
-        filter_mode = fm,
-        filter_value = fv
-      )
-    }
-    if(sub_module == "ALL (ES and AUC)"){
-      df1 <- data.frame(
-        Jobid = Jobid,
-        Submitted_time = Submitted_time,
-        main_module = module_name,
-        table_num = table_num,
-        drug_profile = input$sel_experiment,
-        method_bm = paste0(find_original_names(input$sel_ss),collapse = ", "),
-        signature_file1 = input$file_sig$name,
-        fda_file = input$file_FDA$name,
-        ic50_file = input$file_IC50$name,
-        sub_module = sub_module,
-        filter_mode = fm,
-        filter_value = fv
-      )
-    }
-  }
-  if(module_name == "Application"){
-    if(sub_module == "singlemethod"){
-      df1 <- data.frame(
-        Jobid = Jobid,
-        Submitted_time = Submitted_time,
-        main_module = module_name,
-        table_num = table_num,
-        drug_profile = input$sel_experiment_sm,
-        sub_module = input$sel_model_sm,
-        method_sm2 = find_original_names(input$sel_ss_sm),
-        signature_file2 = input$file_sig_sm$name,
-        sel_num_gene = input$sel_topn_sm,
-        filter_mode = fm,
-        filter_value = fv
-      )
-    }
-    if(sub_module == "SS_cross"){
-      df1 <- data.frame(
-        Jobid = Jobid,
-        Submitted_time = Submitted_time,
-        main_module = module_name,
-        table_num = table_num,
-        drug_profile = input$sel_experiment_sm,
-        sub_module = input$sel_model_sm,
-        method_sm2 = find_original_names(input$sel_ss_sm),
-        signature_file3 = input$file_sig_sm1$name,
-        signature_file4 = input$file_sig_sm2$name,
-        signature_name1 = input$file_name1,
-        signature_name2 = input$file_name2,
-        sel_num_gene = input$sel_topn_sm,
-        filter_mode = fm,
-        filter_value = fv
-      )
-    }
-    if(sub_module == "SS_all"){
-      df1 <- data.frame(
-        Jobid = Jobid,
-        Submitted_time = Submitted_time,
-        main_module = module_name,
-        table_num = table_num,
-        drug_profile = input$sel_experiment_sm,
-        sub_module = input$sel_model_sm,
-        method_sm1 = paste0(find_original_names(input$sel_all_sm),collapse = ", "),
-        direction_sm = input$sel_direct_sm,
-        signature_file2 = input$file_sig_sm$name,
-        sel_num_gene = input$sel_topn_sm,
-        filter_mode = fm,
-        filter_value = fv
-      )
-    }
-  }
-  
-  library(RSQLite)
-  con_res <- dbConnect(RSQLite::SQLite(), "results/resinfo.db")
-  # print(df1)
-
-  ensure_res_table(con_res, df1)
-
-  if(table_num == 1){
-    # print("写入一个表1")
-    # print(Jobid)
-    # print(table_res)
-    # save(table_res,Jobid,file = "X1.rdata")
-    dbWriteTable(con_res, Jobid, table_res)
-    # print("增加一个表1")
-    dbAppendTable(con_res, "res", df1)
-    # print("Sucess!")
-  } else if(table_num == 2) {
-    # print("写入一个表2")
-    dbWriteTable(con_res, paste0(Jobid,"_AUC"), table_res[["AUC"]])
-    # print("写入一个表2")
-    dbWriteTable(con_res, paste0(Jobid,"_ES"), table_res[["ES"]])
-    # print("增加一个表2")
-    dbAppendTable(con_res, "res", df1)
-    # print("wrting to dababase Sucess!")
-  } else {
-    # print("WARING! NO TABLE INPUT!")
-  }
-  
-  dbDisconnect(con_res)
-}
-
 # Quick Tip 弹窗。res_plot 已把 actionButton 的 id 按 prefix+jobid 唯一化
 # （bm_ / sm_ / jc_ 前缀），避免同会话两处渲染同一结果导致的
 # 「IDs were used for more than one input」警告。
@@ -232,7 +79,12 @@ res_plot <- function(job_info, prefix = "res"){
   jid <- if (length(jid) && nzchar(jid[1])) jid[1] else "x"
   tid <- function(base) paste0(prefix, "_", base, "_", jid)
 
-  isFC <- !is.null(job_info$yourjob$filter_mode) && job_info$yourjob$filter_mode == "logFC"
+  # 模式判定：**以结果表首列名为准**（topN 模式首列 "TopN"，|log2FC| 模式首列 "logFC"）。
+  # 不能靠 filter_mode 元数据判定：yourjob 是 V1/V2 键值表，$filter_mode 恒为 NULL；
+  # 且 logFC 任务的 sub_module 仍写作 "ALL (ES and AUC)"（_FC 后缀只出现在 label_output），
+  # 于是 grepl("FC", module) 也判不出来。2026-09-29 实测：两条依据同时失效，
+  # logFC 任务被送进 topN 分支，崩在 draw_dr_auc 的 pivot_longer(cols = -TopN)。
+  is_fc_mode <- function(df) !identical(tolower(names(df)[1]), "topn")
 
   if(job_info$yourmodule == "ALL (ES and AUC)" || 
      grepl("^ALL_FC$", job_info$yourmodule)) {
@@ -240,7 +92,7 @@ res_plot <- function(job_info, prefix = "res"){
     res_bm1 <- job_info$yourtable$`AUC` %>% as_tibble()
     res_bm2 <- job_info$yourtable$`ES` %>% as_tibble()
     
-    if (isFC || grepl("FC", job_info$yourmodule)) {
+    if (is_fc_mode(res_bm1)) {
       pic_out1 <- ggplotly(draw_dr_auc_fc(res_bm1))
       pic_out2 <- ggplotly(draw_dr_es_fc(res_bm2))
     } else {
@@ -274,7 +126,7 @@ res_plot <- function(job_info, prefix = "res"){
     res_title = job_info$yourmodule
     tip_id <- if (res_title == "AUC_FC") "AUC" else res_title
 
-    pic_out <- if (isFC || grepl("FC", job_info$yourmodule))
+    pic_out <- if (is_fc_mode(res_bm))
       ggplotly(draw_dr_auc_fc(res_bm)) else ggplotly(draw_dr_auc(res_bm))
 
     DT_res_bm <- datatable(res_bm) %>% 
@@ -297,7 +149,7 @@ res_plot <- function(job_info, prefix = "res"){
     res_bm = job_info$yourtable %>% as_tibble()
     res_title = job_info$yourmodule
 
-    pic_out <- if (isFC || grepl("FC", job_info$yourmodule))
+    pic_out <- if (is_fc_mode(res_bm))
       ggplotly(draw_dr_es_fc(res_bm)) else ggplotly(draw_dr_es(res_bm))
 
     DT_res_bm <- datatable(res_bm) %>% 

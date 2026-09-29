@@ -217,6 +217,19 @@ get_benchmark_i <- function(IC50_drug,FDA_drug, i.need.logfc ,sel_exp,sel_ss,
   # print("进入get_benchmark_i")
   cores = get_cores()
   
+  # ---- 进度总步数：AUC 与 ES 各扫一遍，扫描点数之和即为总步数 ----
+  # 每个扫描点完成时会由 get_dr_auc_i / get_dr_es_i 打点一次。
+  n_scan <- function() {
+    if (filter_mode == "logFC")
+      length(seq(0.5, min(get_fcth(i.need.logfc), 3.0), by = 0.05))
+    else
+      # topN 模式：扫到「单方向签名基因数」为止（封顶 1000），下限保底 10
+      length(seq(from = 10, to = max(10L, min(get_topn(i.need.logfc), 1000L)), by = 1))
+  }
+  n_auc <- if (is.null(IC50_drug)) 0L else n_scan()
+  n_es  <- if (is.null(FDA_drug))  0L else n_scan()
+  init_job_progress(get_job_context(), n_auc + n_es, "Benchmark scanning")
+  
   ###################
   ### AUC part
   ###################
@@ -281,17 +294,20 @@ get_dr_auc_i <- function(IC50_drug,i.need.logfc,sel_exp,sel_ss,cores){
   
   IC50_GSE92742 <- exp_LINCS2020[, colnames(exp_LINCS2020) %in% IC50_drug$`Compound_name`,drop=F]
   
-  # topN 扫描范围：下限 10，上限取「签名基因数」与 1000 的较大者，
-  # 保证至少覆盖 10-1000（签名基因更多时不丢数据；更少时超出部分基因集
-  # 已用尽，曲线自然趋于平台，无害）。get_auc_all 按 topn 值 memoise，
-  # 已算过的 topn 会命中缓存，仅新增 topn 点重新计算。
-  patch_auc_sum <- parallel::mclapply(seq(from = 10, to = max(get_topn(i.need.logfc), 1000), by = 1),
-                                      get_auc_all,
-                                      refMatrix = IC50_GSE92742,
-                                      sig_input = i.need.logfc,
-                                      IC50_drug = IC50_drug,
-                                      get_ss = sel_ss,
-                                      mc.cores = cores)
+  # topN 扫描范围：10 到「单方向签名基因数」（封顶 1000）。
+  # 超过该基因数后 up/down 基因集已取满，再增大 topn 打分不变（曲线进平台），
+  # 故截断到饱和点，不再算无意义的平台段。小签名时下限保底 10，避免 seq 反向。
+  # get_auc_all 按 topn 值 memoise，已算过的 topn 会命中缓存。
+  topn_seq <- seq(from = 10, to = max(10L, min(get_topn(i.need.logfc), 1000L)), by = 1)
+  patch_auc_sum <- parallel::mclapply(topn_seq, function(tn) {
+    out <- get_auc_all(tn,
+                       refMatrix = IC50_GSE92742,
+                       sig_input = i.need.logfc,
+                       IC50_drug = IC50_drug,
+                       get_ss = sel_ss)
+    tick_job_progress()   # fork 子进程内打点：完成一个 topN 扫描点
+    out
+  }, mc.cores = cores)
   # save(patch_auc_sum,file = "patch_auc_sum.Rdata")
   patch_auc_sum <- do.call(rbind, patch_auc_sum) %>% tibble::as_tibble() %>% 
     dplyr::transmute( across(where(is.list),unlist )) 
@@ -310,14 +326,17 @@ get_dr_es_i <- function(FDA_drug, i.need.logfc, sel_exp,sel_ss,cores){
 
   load(paste0("data_preload/drugexp/",sel_exp))
   
-  # 同 AUC：topN 扫描上限取「签名基因数」与 1000 的较大者，覆盖 10-1000。
-  patch_es_sum <- parallel::mclapply(seq(from = 10, to = max(get_topn(i.need.logfc), 1000), by = 1),
-                                     get_es_all,
-                                     refMatrix = exp_LINCS2020,
-                                     sig_input = i.need.logfc,
-                                     drug_sig = FDA_drug$`Compound_name`,
-                                     get_ss = sel_ss,
-                                     mc.cores = cores)
+  # 同 AUC：topN 扫描上限取「单方向签名基因数」（封顶 1000），扫到饱和为止。
+  topn_seq <- seq(from = 10, to = max(10L, min(get_topn(i.need.logfc), 1000L)), by = 1)
+  patch_es_sum <- parallel::mclapply(topn_seq, function(tn) {
+    out <- get_es_all(tn,
+                      refMatrix = exp_LINCS2020,
+                      sig_input = i.need.logfc,
+                      drug_sig = FDA_drug$`Compound_name`,
+                      get_ss = sel_ss)
+    tick_job_progress()   # fork 子进程内打点：完成一个 topN 扫描点
+    out
+  }, mc.cores = cores)
   
   
   patch_es_sum <- do.call(rbind, patch_es_sum) %>% tibble::as_tibble() %>% 
@@ -435,9 +454,12 @@ get_dr_auc_fc_i <- function(IC50_drug, i.need.logfc, sel_exp, sel_ss, cores) {
   fc_max <- min(get_fcth(i.need.logfc), 3.0)
   fc_seq <- seq(0.5, fc_max, by = 0.05)
 
-  patch <- parallel::mclapply(fc_seq, get_auc_fc,
-    refMatrix = IC50_mat, sig_input = i.need.logfc,
-    IC50_drug = IC50_drug, get_ss = sel_ss, mc.cores = cores)
+  patch <- parallel::mclapply(fc_seq, function(fc) {
+    out <- get_auc_fc(fc, refMatrix = IC50_mat, sig_input = i.need.logfc,
+                      IC50_drug = IC50_drug, get_ss = sel_ss)
+    tick_job_progress()   # fork 子进程内打点：完成一个 logFC 阈值点
+    out
+  }, mc.cores = cores)
   patch <- do.call(rbind, patch) %>% tibble::as_tibble() %>%
     dplyr::transmute(across(where(is.list), unlist))
   colnames(patch)[1] <- "logFC"
@@ -451,9 +473,12 @@ get_dr_es_fc_i <- function(FDA_drug, i.need.logfc, sel_exp, sel_ss, cores) {
   fc_max <- min(get_fcth(i.need.logfc), 3.0)
   fc_seq <- seq(0.5, fc_max, by = 0.05)
 
-  patch <- parallel::mclapply(fc_seq, get_es_fc,
-    refMatrix = exp_LINCS2020, sig_input = i.need.logfc,
-    drug_sig = FDA_drug$`Compound_name`, get_ss = sel_ss, mc.cores = cores)
+  patch <- parallel::mclapply(fc_seq, function(fc) {
+    out <- get_es_fc(fc, refMatrix = exp_LINCS2020, sig_input = i.need.logfc,
+                     drug_sig = FDA_drug$`Compound_name`, get_ss = sel_ss)
+    tick_job_progress()   # fork 子进程内打点：完成一个 logFC 阈值点
+    out
+  }, mc.cores = cores)
   patch <- do.call(rbind, patch) %>% tibble::as_tibble() %>%
     dplyr::transmute(across(where(is.list), unlist))
   colnames(patch)[1] <- "logFC"
@@ -557,6 +582,16 @@ gsea1 <- function(reflist, set, w=1) {
 
 
 
+# ---- 绘图拟合方式（2026-09-29 改，仅视觉）----
+# 原用 stat_smooth(method="lm", formula=y~I(x^(-1))) 把曲线强制成 1/x 形状：
+# 画不出真实的「先降→后升→再进平台」形态（后段会僵成水平线），且 RMSE 比 LOESS 高一倍
+# （AUC 0.0353 vs 0.0178；ES 0.1547 vs 0.0763，实测于 991 点 × 7 方法的结果表）。
+# 现统一改为 LOESS(span=.75)，se=FALSE 去掉 7 条互相叠加的置信带。
+# 关于 span：.3 时每条曲线平均有约 250 个局部极值，视觉上明显发抖；.75 降到约 5 个，
+# 与论文 Figure 4B 的观感一致，而 RMSE 仅由 0.0178 升到 0.0260，仍优于原参数化的 0.0353。
+# 散点 size=.8 / alpha=.45：alpha=.10 时 7 种方法颜色几乎认不出来（用户反馈）；
+# .45 既能分辨颜色，又不至于在近千点密集体把曲线糊掉（对标 eLife 2022, Yang et al., Figure 4B）。
+# 注意：最优点虚线仍按原逻辑取单点极值 res_input[1,1]，本次只改视觉，未动推荐逻辑。
 draw_dr_auc <- function(res_input){
   
   res_auc <- res_input %>%  as_tibble() %>% pivot_longer(
@@ -571,11 +606,11 @@ draw_dr_auc <- function(res_input){
   first_row_value <- res_input[1,1] %>% pull()
   
   p1 <- ggplot(data=res_auc, mapping = aes(x=TopN, y=`AUC`)) +
-    geom_point(aes(color = method)) + 
+    geom_point(aes(color = method), size = 0.8, alpha = 0.45) + 
     geom_vline(xintercept = first_row_value, linetype="dashed", color = "black") + 
-    stat_smooth(aes(color = method),
-                method = "lm",formula=y~I(x^(-1)),
-    ) +  theme_test() + ggsci::scale_color_npg()
+    geom_smooth(aes(color = method), method = "loess", span = 0.75,
+                se = FALSE, linewidth = 0.8) +
+    theme_test() + ggsci::scale_color_npg()
   
   return(p1)
 }
@@ -594,12 +629,11 @@ draw_dr_es <- function(res_input){
   first_row_value <- res_input[1,1] %>% pull()
   
   p2 <- ggplot(data=res_es, mapping = aes(x=TopN, y=`ES`)) +
-    geom_point(aes(color = method)) + 
+    geom_point(aes(color = method), size = 0.8, alpha = 0.45) + 
     geom_vline(xintercept = first_row_value, linetype="dashed", color = "black") + 
-    stat_smooth(aes(color = method),
-                #method = MASS::rlm,
-                method = "lm",formula=y~I(x^(-0.5)),
-    ) + theme_test() + ggsci::scale_color_npg()
+    geom_smooth(aes(color = method), method = "loess", span = 0.75,
+                se = FALSE, linewidth = 0.8) +
+    theme_test() + ggsci::scale_color_npg()
   return(p2)
 }
 
@@ -631,9 +665,10 @@ draw_dr_auc_fc <- function(res_input) {
   first_val <- res_input[1, 1] %>% pull()
 
   ggplot(res_auc, aes(x = logFC, y = AUC)) +
-    geom_point(aes(color = method)) +
+    geom_point(aes(color = method), size = 0.8, alpha = 0.45) +
     geom_vline(xintercept = first_val, linetype = "dashed", color = "black") +
-    stat_smooth(aes(color = method), method = "lm", formula = y ~ I(x^(-1))) +
+    geom_smooth(aes(color = method), method = "loess", span = 0.75,
+                se = FALSE, linewidth = 0.8) +
     theme_test() + ggsci::scale_color_npg() +
     xlab("|log2FC| threshold")
 }
@@ -648,9 +683,10 @@ draw_dr_es_fc <- function(res_input) {
   first_val <- res_input[1, 1] %>% pull()
 
   ggplot(res_es, aes(x = logFC, y = ES)) +
-    geom_point(aes(color = method)) +
+    geom_point(aes(color = method), size = 0.8, alpha = 0.45) +
     geom_vline(xintercept = first_val, linetype = "dashed", color = "black") +
-    stat_smooth(aes(color = method), method = "lm", formula = y ~ I(x^(-0.5))) +
+    geom_smooth(aes(color = method), method = "loess", span = 0.75,
+                se = FALSE, linewidth = 0.8) +
     theme_test() + ggsci::scale_color_npg() +
     xlab("|log2FC| threshold")
 }
