@@ -308,6 +308,13 @@ get_ss_cross_res <- memoise::memoise(get_ss_cross_res_i,cache = local_cache_fold
 #   1) 抽哪些基因做 null —— 由固定种子 NULL_SEED 决定，同一输入在任何会话 /
 #      任何机器上都抽到完全相同的 null 基因集；
 #   2) null 分数怎么算   —— 仍然实时针对当前的 refMatrix / drug_rank_idx 计算。
+#
+# 【并行化】n_perm 轮置换之间完全独立，是最容易并行的一环（单轮实测：XSum
+# 0.22s、XCos 0.49s、CMap 4.35s、GSEA 8.11s，×2000 轮 → GSEA 单任务曾需 4.5
+# 小时）。为保证并行不改变结果，基因集仍在**父进程**用同一条 RNG 流按原顺序
+# 一次抽完，再连同下标一起交给 mclapply 的子进程做纯计算 —— 子进程全程不碰
+# RNG。因此核数不同的两次运行会得到逐位相同的 null 分布与 p 值。
+# 与 Benchmark 一致：进度打点由 fork 子进程各自写库（tick_job_progress 静默失败）。
 # ============================================================
 NULL_SEED         <- 20240101L  # 固定种子：保证 null 基因集可复现
 NULL_N_PERM       <- 2000L      # 默认排列次数（p 值分辨率 1/n_perm = 5e-4）
@@ -367,27 +374,53 @@ get_pval <- function(res_raw, refMatrix, drug_rank_idx, funcname, topn = 489) {
   set.seed(NULL_SEED, kind = "Mersenne-Twister",
            normal.kind = "Inversion", sample.kind = "Rejection")
   
-  null_scores <- matrix(NA_real_, n_drugs, n_perm)
-  
+  # ---- 一次性抽完所有轮次的 null 基因集（父进程单一 RNG 流）----
+  # 仍走 sample(all_genes, ...)，确保与串行版消耗完全相同的随机数序列；
+  # 存成下标矩阵（n_genes 长度的下标 × n_perm）而非字符矩阵，省内存也省拷贝。
+  null_idx <- matrix(NA_integer_, nrow = topn * 2L, ncol = n_perm)
   for (iter in seq_len(n_perm)) {
     rand_genes <- sample(all_genes, topn * 2)
-    up_genes   <- rand_genes[1:topn]
-    dn_genes   <- rand_genes[(topn + 1):(topn * 2)]
-    
-    if (funcname %in% c("SS_Xsum", "SS_XCos")) {
-      # XSum / XCos：只需查 topN，极快
-      null_scores[, iter] <- .null_topn(refMatrix, drug_rank_idx, 
-                                         up_genes, dn_genes, topn, funcname)
-    } else if (funcname == "SS_PLAGE") {
-      # PLAGE：一次 SVD 即给出全部药物的活性，必须整列一次算完
-      null_scores[, iter] <- .null_plage(refMatrix, up_genes, dn_genes)
-    } else {
-      # KS / GSEA / ZhangScore：使用完整排名
-      null_scores[, iter] <- .null_full(refMatrix, drug_rank_idx,
-                                         up_genes, dn_genes, n_genes, funcname)
-    }
-    tick_job_progress()   # 每完成一轮 null 置换打点一次
+    null_idx[, iter] <- match(rand_genes, all_genes)
   }
+  
+  # ---- 切块并行：块数取核数的 4 倍，兼顾负载均衡与 fork 开销 ----
+  n_cores <- if (.Platform$OS.type == "unix") max(1L, min(get_cores(), n_perm)) else 1L
+  n_chunk <- if (n_cores <= 1L) 1L else min(n_perm, n_cores * 4L)
+  chunks  <- if (n_chunk <= 1L) list(seq_len(n_perm)) else
+    split(seq_len(n_perm),
+          cut(seq_len(n_perm), breaks = n_chunk, labels = FALSE))
+  
+  null_chunk <- function(iters) {
+    m <- matrix(NA_real_, n_drugs, length(iters))
+    for (k in seq_along(iters)) {
+      iter <- iters[k]
+      idx  <- null_idx[, iter]
+      up_genes <- all_genes[idx[seq_len(topn)]]
+      dn_genes <- all_genes[idx[(topn + 1L):(topn * 2L)]]
+      
+      if (funcname %in% c("SS_Xsum", "SS_XCos")) {
+        # XSum / XCos：只需查 topN，极快
+        m[, k] <- .null_topn(refMatrix, drug_rank_idx, 
+                             up_genes, dn_genes, topn, funcname)
+      } else if (funcname == "SS_PLAGE") {
+        # PLAGE：一次 SVD 即给出全部药物的活性，必须整列一次算完
+        m[, k] <- .null_plage(refMatrix, up_genes, dn_genes)
+      } else {
+        # KS / GSEA / ZhangScore：使用完整排名
+        m[, k] <- .null_full(refMatrix, drug_rank_idx,
+                             up_genes, dn_genes, n_genes, funcname)
+      }
+      tick_job_progress()   # 每完成一轮 null 置换打点一次
+    }
+    m
+  }
+  
+  null_list <- if (n_cores <= 1L) {
+    lapply(chunks, null_chunk)
+  } else {
+    parallel::mclapply(chunks, null_chunk, mc.cores = n_cores)
+  }
+  null_scores <- do.call(cbind, null_list)   # 块序 == 轮次序
   
   null  <- null_scores[match(common, colnames(refMatrix)), , drop = FALSE]
   pvals <- rowMeans(abs(null) >= abs(obs), na.rm = TRUE)

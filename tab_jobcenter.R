@@ -85,7 +85,7 @@ observeEvent(input$jobid_get, {
       req(job_info$yourmodule)
       
       res_plot(job_info, prefix = "jc")
-      # save(job_info,file = "demo/BEN1712624574ZFX.rdata")
+      # save(job_info,file = "demo/BEN1790672381JTV.rdata")
       
     }) # isolate end
   })

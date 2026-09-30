@@ -35,38 +35,51 @@ if (!exists("tip_seen", mode = "environment") || is.null(tip_seen)) {
 .observe_tip("intro_res_sm_cross_", "www/info_Q9_sm_cross.md", "Quick Tip")
 .observe_tip("intro_res_sm_all_",  "www/info_Q9_sm_all.md",  "Quick Tip")
 
+# 读取 demo 结果 rdata：不硬依赖文件里的对象名。
+# 历史教训（2026-09-30）：生成脚本曾把对象存成 ji，而页面 load() 之后按
+# job_info 取，8 个 demo 按钮全部报 "object 'job_info' not found"。这里先看
+# 有没有 job_info，没有就用文件里唯一的对象，让两侧彻底解耦。
+.load_demo <- function(f) {
+  e <- new.env(parent = emptyenv())
+  load(f, envir = e)
+  if (exists("job_info", envir = e, inherits = FALSE)) return(get("job_info", envir = e))
+  nms <- ls(e)
+  if (length(nms) == 1L) return(get(nms, envir = e))
+  stop("demo 文件 ", f, " 里的对象名无法识别：", paste(nms, collapse = ", "))
+}
+
 # FOR EACH PAGE
 observeEvent(input$runBENdemo,{
-  load("demo/BEN1712624574ZFX.rdata")
+  job_info <- .load_demo("demo/BEN1790672381JTV.rdata")
   output$display_bm <- renderUI({res_plot(job_info, prefix = "bm")})
 })
 observeEvent(input$runAPPdemo1,{
-  load("demo/APP1709824554ILK.rdata")
+  job_info <- .load_demo("demo/APP1790669686URX.rdata")
   output$display_sm <- renderUI({res_plot(job_info, prefix = "sm")})
 })
 observeEvent(input$runAPPdemo2,{
-  load("demo/APP1709818711RFU.rdata")
+  job_info <- .load_demo("demo/APP1790669691LXK.rdata")
   output$display_sm <- renderUI({res_plot(job_info, prefix = "sm")})
 })
 observeEvent(input$runAPPdemo3,{
-  load("demo/APP1709818670ZIA.rdata")
+  job_info <- .load_demo("demo/APP1790735151KID.rdata")
   output$display_sm <- renderUI({res_plot(job_info, prefix = "sm")})
 })
 # FOR JOB PAGE
 observeEvent(input$runjcBENdemo,{
-  load("demo/BEN1712624574ZFX.rdata")
+  job_info <- .load_demo("demo/BEN1790672381JTV.rdata")
   output$display_jc <- renderUI({res_plot(job_info, prefix = "jc")})
 })
 observeEvent(input$runjcAPPdemo1,{
-  load("demo/APP1709824554ILK.rdata")
+  job_info <- .load_demo("demo/APP1790669686URX.rdata")
   output$display_jc <- renderUI({res_plot(job_info, prefix = "jc")})
 })
 observeEvent(input$runjcAPPdemo2,{
-  load("demo/APP1709818711RFU.rdata")
+  job_info <- .load_demo("demo/APP1790669691LXK.rdata")
   output$display_jc <- renderUI({res_plot(job_info, prefix = "jc")})
 })
 observeEvent(input$runjcAPPdemo3,{
-  load("demo/APP1709818670ZIA.rdata")
+  job_info <- .load_demo("demo/APP1790735151KID.rdata")
   output$display_jc <- renderUI({res_plot(job_info, prefix = "jc")})
 })
 

@@ -11,6 +11,28 @@
 QUEUE_DB  <- "results/resinfo.db"   # 与结果库同一个 SQLite 文件
 QUEUE_DIR <- "cache/queue"          # 存放每个任务的参数 rds
 
+# ---------------------------------------------------------------------------
+# 统一的连接入口 + 并发写加固
+#
+# 背景（2026-09-30 实测）：4 个进程并发跑 Application 任务，其中 3 个在写结果
+# 时抛 "database is locked"，任务算了几小时后直接被标记 error。根因是默认
+# delete 日志模式下，dbWriteTable 先在事务里改数据、到 COMMIT 才去申请
+# EXCLUSIVE 锁；此时若别的连接已持有写锁，SQLite 会**直接**返回 SQLITE_BUSY
+# 而不调用 busy handler（锁升级不能等，否则可能死锁），busy_timeout 形同虚设。
+# 三管齐下：
+#   1) WAL：读不阻塞写、写不阻塞读（Shiny 轮询进度不再被结果写入卡住），且
+#      写锁变成"申请即获得"的普通等待，busy handler 此时才真正生效。
+#      journal_mode 是数据库文件级的持久属性，设置一次即可，下面只做兜底。
+#   2) busy_timeout 30s：写锁竞争时排队等待，而不是立刻失败。
+#   3) 结果写入整段包进 BEGIN IMMEDIATE：一开始就拿到写锁（避免提交时升级），
+#      顺带保证"结果表 + res 元数据"要么都写、要么都不写。
+# ---------------------------------------------------------------------------
+.db_connect <- function(db = QUEUE_DB) {
+  con <- RSQLite::dbConnect(RSQLite::SQLite(), db)
+  RSQLite::dbExecute(con, "PRAGMA busy_timeout=30000;")
+  con
+}
+
 # NULL -> NA 的小工具（构建元数据时防止 data.frame 报错）
 .nz <- function(x) if (is.null(x) || length(x) == 0) NA_character_ else x
 
@@ -75,6 +97,9 @@ ensure_worker_running <- function(target = 1) {
 # 建表：job_queue（若不存在）
 # ---------------------------------------------------------------------------
 ensure_job_queue_table <- function(con) {
+  # WAL 兜底：journal_mode 是数据库文件级的持久属性（2026-09-30 已对生产库
+  # 设置过），这里只在建表路径上补一次，防止换新库/还原旧库时退回 delete 模式。
+  try(RSQLite::dbExecute(con, "PRAGMA journal_mode=WAL;"), silent = TRUE)
   RSQLite::dbExecute(con, "
     CREATE TABLE IF NOT EXISTS job_queue (
       jobid          TEXT PRIMARY KEY,
@@ -124,9 +149,8 @@ enqueue_job <- function(jobid, module, sub_module, params, meta,
     file.path(QUEUE_DIR, paste0(jobid, ".rds"))
   )
 
-  con <- RSQLite::dbConnect(RSQLite::SQLite(), QUEUE_DB)
+  con <- .db_connect()
   on.exit(RSQLite::dbDisconnect(con))
-  RSQLite::dbExecute(con, "PRAGMA busy_timeout=8000;")
   ensure_job_queue_table(con)
   RSQLite::dbExecute(con,
     "INSERT OR REPLACE INTO job_queue (jobid, module, sub_module, status, submitted_time)
@@ -139,9 +163,8 @@ enqueue_job <- function(jobid, module, sub_module, params, meta,
 # 查询任务状态（Shiny 轮询用）。返回含 status/error_msg 的 data.frame（0 或 1 行）
 # ---------------------------------------------------------------------------
 get_job_status <- function(jobid) {
-  con <- RSQLite::dbConnect(RSQLite::SQLite(), QUEUE_DB)
+  con <- .db_connect()
   on.exit(RSQLite::dbDisconnect(con))
-  RSQLite::dbExecute(con, "PRAGMA busy_timeout=8000;")
   if (!RSQLite::dbExistsTable(con, "job_queue")) return(data.frame())
   RSQLite::dbGetQuery(con,
     "SELECT status, error_msg FROM job_queue WHERE jobid = ?",
@@ -152,9 +175,8 @@ get_job_status <- function(jobid) {
 # worker 侧：原子抢占一条 pending 任务（BEGIN IMMEDIATE 防止多 worker 抢同一条）
 # ---------------------------------------------------------------------------
 claim_next_job <- function() {
-  con <- RSQLite::dbConnect(RSQLite::SQLite(), QUEUE_DB)
+  con <- .db_connect()
   on.exit(RSQLite::dbDisconnect(con))
-  RSQLite::dbExecute(con, "PRAGMA busy_timeout=8000;")
   ensure_job_queue_table(con)
   RSQLite::dbExecute(con, "BEGIN IMMEDIATE;")
   job <- tryCatch(
@@ -175,9 +197,8 @@ claim_next_job <- function() {
 # worker 侧：更新任务终态
 # ---------------------------------------------------------------------------
 mark_job <- function(jobid, status, error_msg = NA_character_) {
-  con <- RSQLite::dbConnect(RSQLite::SQLite(), QUEUE_DB)
+  con <- .db_connect()
   on.exit(RSQLite::dbDisconnect(con))
-  RSQLite::dbExecute(con, "PRAGMA busy_timeout=8000;")
   RSQLite::dbExecute(con,
     "UPDATE job_queue SET status=?, finished_time=?, error_msg=? WHERE jobid=?",
     params = list(status, as.character(Sys.time()), error_msg, jobid))
@@ -200,9 +221,8 @@ get_job_context <- function() .ssp_job_ctx$jobid
 # 任务开始时调用：写入总步数，并清空上一轮遗留的打点
 init_job_progress <- function(jobid, total, msg = "") {
   if (is.null(jobid) || is.na(jobid)) return(invisible(NULL))
-  con <- RSQLite::dbConnect(RSQLite::SQLite(), QUEUE_DB)
+  con <- .db_connect()
   on.exit(RSQLite::dbDisconnect(con))
-  RSQLite::dbExecute(con, "PRAGMA busy_timeout=8000;")
   ensure_job_queue_table(con)
   RSQLite::dbExecute(con, "DELETE FROM job_progress WHERE jobid=?", params = list(jobid))
   RSQLite::dbExecute(con,
@@ -214,11 +234,7 @@ init_job_progress <- function(jobid, total, msg = "") {
 # 完成一步：追加一行打点。静默失败——进度上报绝不能拖垮/中断计算。
 tick_job_progress <- function(jobid = get_job_context()) {
   if (is.null(jobid) || is.na(jobid)) return(invisible(NULL))
-  con <- tryCatch({
-    cc <- RSQLite::dbConnect(RSQLite::SQLite(), QUEUE_DB)
-    RSQLite::dbExecute(cc, "PRAGMA busy_timeout=8000;")
-    cc
-  }, error = function(e) NULL)
+  con <- tryCatch(.db_connect(), error = function(e) NULL)
   if (is.null(con)) return(invisible(NULL))
   on.exit(RSQLite::dbDisconnect(con), add = TRUE)
   tryCatch({
@@ -231,9 +247,8 @@ tick_job_progress <- function(jobid = get_job_context()) {
 
 # 前端轮询：返回 list(done, total, msg)；total=0 表示任务尚未开始计算
 get_job_progress <- function(jobid) {
-  con <- RSQLite::dbConnect(RSQLite::SQLite(), QUEUE_DB)
+  con <- .db_connect()
   on.exit(RSQLite::dbDisconnect(con))
-  RSQLite::dbExecute(con, "PRAGMA busy_timeout=8000;")
   if (!RSQLite::dbExistsTable(con, "job_queue"))
     return(list(done = 0L, total = 0L, msg = ""))
   q <- RSQLite::dbGetQuery(con,
@@ -252,11 +267,7 @@ get_job_progress <- function(jobid) {
 
 # 任务结束后清理打点，避免表无限增长
 clear_job_progress <- function(jobid) {
-  con <- tryCatch({
-    cc <- RSQLite::dbConnect(RSQLite::SQLite(), QUEUE_DB)
-    RSQLite::dbExecute(cc, "PRAGMA busy_timeout=8000;")
-    cc
-  }, error = function(e) NULL)
+  con <- tryCatch(.db_connect(), error = function(e) NULL)
   if (is.null(con)) return(invisible(NULL))
   on.exit(RSQLite::dbDisconnect(con), add = TRUE)
   tryCatch({
@@ -340,17 +351,28 @@ build_df1 <- function(jobid, submitted_time, module, sub_module, table_num, meta
 write_result_from_meta <- function(jobid, submitted_time, module, sub_module,
                                    table_num, table_res, meta) {
   df1 <- build_df1(jobid, submitted_time, module, sub_module, table_num, meta)
-  con <- RSQLite::dbConnect(RSQLite::SQLite(), QUEUE_DB)
+  con <- .db_connect()
   on.exit(RSQLite::dbDisconnect(con))
-  RSQLite::dbExecute(con, "PRAGMA busy_timeout=8000;")
-  created <- .ensure_res_cols(con, df1)
-  if (table_num == 2) {
-    RSQLite::dbWriteTable(con, paste0(jobid, "_AUC"), table_res[["AUC"]])
-    RSQLite::dbWriteTable(con, paste0(jobid, "_ES"),  table_res[["ES"]])
-  } else {
-    RSQLite::dbWriteTable(con, jobid, table_res)
-  }
-  if (!created) RSQLite::dbAppendTable(con, "res", df1)
+
+  # BEGIN IMMEDIATE：一开始就拿到写锁（而不是 COMMIT 时才升级被拒），
+  # 同时让"结果表 + res 元数据"成为一个原子事务。实测 dbWriteTable 会嵌套进
+  # 外层事务（ROLLBACK 能撤掉它），所以这里可以放心包一层。
+  RSQLite::dbExecute(con, "BEGIN IMMEDIATE;")
+  ok <- tryCatch({
+    created <- .ensure_res_cols(con, df1)
+    if (table_num == 2) {
+      RSQLite::dbWriteTable(con, paste0(jobid, "_AUC"), table_res[["AUC"]])
+      RSQLite::dbWriteTable(con, paste0(jobid, "_ES"),  table_res[["ES"]])
+    } else {
+      RSQLite::dbWriteTable(con, jobid, table_res)
+    }
+    if (!created) RSQLite::dbAppendTable(con, "res", df1)
+    TRUE
+  }, error = function(e) {
+    try(RSQLite::dbExecute(con, "ROLLBACK;"), silent = TRUE)
+    stop(e)
+  })
+  if (ok) RSQLite::dbExecute(con, "COMMIT;")
   invisible(NULL)
 }
 
