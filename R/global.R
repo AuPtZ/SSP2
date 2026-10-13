@@ -32,6 +32,22 @@ library(magrittr)
 
 # 加载可视化的数据，用于UI显示
 load("data_preload/others/drug_num_list1.rdata") # 读取数据内容
+# 每个数据集的基因数（LINCS 12,328 landmark / Tahoe 62,710 全基因）
+gene_num_list1 <- NULL
+if (file.exists("data_preload/others/gene_num_list1.rdata")) {
+  load("data_preload/others/gene_num_list1.rdata")
+}
+
+# 药物基本信息表：LINCS 药物名 -> PubChem 化学身份/理化性质/别名/作用机制。
+# 由 maintain/09抓取PubChem药物信息.R 离线抓取生成（不存在则跳过，功能自动降级）。
+# 用途：Application 结果表点某一行时弹出该药物的详情。
+drug_info_pubchem <- NULL
+DRUG_INFO_FILE <- "data_preload/drugconvertor/drug_info_pubchem.Rdata"
+if (file.exists(DRUG_INFO_FILE)) {
+  di_env <- new.env(); load(DRUG_INFO_FILE, envir = di_env)   # 不依赖文件里的对象名
+  drug_info_pubchem <- as.data.frame(get(ls(di_env)[1], envir = di_env),
+                                     stringsAsFactors = FALSE)
+}
 
 # ---------------------------------------------------------------------------
 # 各页面两级联动（tissue -> dataset）所需数据结构
@@ -75,17 +91,66 @@ if (file.exists(cellinfo_path)) {
 cellline_tissue_override <- c()
 cellline_tissue[names(cellline_tissue_override)] <- cellline_tissue_override
 
+# Tahoe-100M 的细胞系不在 LINCS cellinfo 里，用官方 cell_line_metadata 的 Organ 补上。
+# 只补 LINCS 映射里没有的，避免覆盖已有的手写覆盖。
+if (file.exists("data_preload/tahoe/cellline_organ.rdata")) {
+  tahoe_env <- new.env()
+  load("data_preload/tahoe/cellline_organ.rdata", envir = tahoe_env)
+  if (exists("cellline_organ", envir = tahoe_env)) {
+    tahoe_organ <- get("cellline_organ", envir = tahoe_env)
+    # 文件名里的细胞系名做过安全化（HepG2/C3A -> HepG2-C3A），两种写法都要能匹配上
+    tahoe_safe  <- setNames(tahoe_organ, gsub("[/\\\\:*?\"<>|]", "-", names(tahoe_organ)))
+    tahoe_all   <- c(tahoe_organ, tahoe_safe)
+    tahoe_all   <- tahoe_all[!duplicated(names(tahoe_all))]
+    add_cells   <- setdiff(names(tahoe_all), names(cellline_tissue))
+    cellline_tissue <- c(cellline_tissue, tahoe_all[add_cells])
+  }
+}
+
 dl_files   <- unname(drug_num_list1)
 dl_names   <- names(drug_num_list1)
-dl_cl      <- sub("^LINCS_([^_]+)_.*", "\\1", dl_files)
+# 数据源：LINCS（12,328 基因 × 1,000+ 药）或 Tahoe-100M（62,710 基因 × 379 药 × 47 细胞系）
+dl_src     <- ifelse(grepl("^Tahoe_", dl_files), "Tahoe-100M", "LINCS")
+# 细胞系名可能含空格/连字符/下划线（Hs 766T、SW 1088、HepG2-C3A），
+# 所以不能"取到第一个下划线为止"；改为剥掉前缀和尾部的"剂量(_时间)"再取剩余部分。
+# LINCS:  LINCS_MCF7_10uM_6h.rdata      -> MCF7
+# Tahoe:  Tahoe_COLO 205_0.05uM.rdata   -> COLO 205（无时间维度）
+dl_cl      <- sub("^(?:LINCS|Tahoe)_", "", dl_files)
+dl_cl      <- sub("_[0-9.]+uM(_[0-9]+h)?\\.rdata$", "", dl_cl)
 dl_tissue  <- cellline_tissue[dl_cl]
 dl_tissue[is.na(dl_tissue)] <- "Other"
+# 跨细胞系聚合的 PAN 不是一个真实细胞系，单独给个组织名
+dl_tissue[dl_cl == "PAN"] <- "Pan-cell line"
 
-drug_num_list_by_tissue <- list()
-for (t in sort(unique(dl_tissue))) {
-  idx <- which(dl_tissue == t)
-  drug_num_list_by_tissue[[t]] <- setNames(dl_files[idx], dl_names[idx])
+# 三级结构：数据源 -> 组织 -> 数据集（app.R 的两级联动升级为三级）
+DATA_SOURCES <- c("LINCS", "Tahoe-100M")
+drug_num_list_by_source_tissue <- list()
+for (s in DATA_SOURCES) {
+  idx_s <- which(dl_src == s)
+  if (!length(idx_s)) next
+  ts <- sort(unique(dl_tissue[idx_s]))
+  drug_num_list_by_source_tissue[[s]] <- setNames(
+    lapply(ts, function(t) {
+      k <- idx_s[dl_tissue[idx_s] == t]
+      setNames(dl_files[k], dl_names[k])
+    }), ts)
 }
+# 默认数据源：Tahoe-100M（本平台的主数据源），没有 Tahoe 数据时回退到 LINCS
+DEFAULT_SOURCE <- if ("Tahoe-100M" %in% names(drug_num_list_by_source_tissue)) {
+  "Tahoe-100M"
+} else names(drug_num_list_by_source_tissue)[1]
+# 兼容旧代码：drug_num_list_by_tissue 指向默认数据源的组织->数据集列表
+drug_num_list_by_tissue <- drug_num_list_by_source_tissue[[DEFAULT_SOURCE]]
+
+# 各页面默认选中项：随默认数据源自动适配
+# （Tahoe 的器官里没有 Bone，硬编码会在切换数据源后变成空下拉）
+first_in <- function(t) if (t %in% names(drug_num_list_by_tissue)) {
+  unname(drug_num_list_by_tissue[[t]][1])
+} else unname(drug_num_list_by_tissue[[1]][1])
+DEFAULT_TISSUE_BM <- if ("Bone"   %in% names(drug_num_list_by_tissue)) "Bone"   else names(drug_num_list_by_tissue)[1]
+DEFAULT_TISSUE_SM <- if ("Breast" %in% names(drug_num_list_by_tissue)) "Breast" else names(drug_num_list_by_tissue)[1]
+DEFAULT_DS_BM     <- first_in(DEFAULT_TISSUE_BM)
+DEFAULT_DS_SM     <- first_in(DEFAULT_TISSUE_SM)
 load("data_preload/annotation/disinfo_vector.Rdata")
 load("data_preload/annotation/disinfo_vector2.Rdata")
 load("data_preload/others/landmark.rdata")
@@ -124,10 +189,12 @@ ss_list <- list(
 )
 
 # 首页统计卡片用到的汇总数字（动态计算，避免硬编码）
-n_tissue   <- length(drug_num_list_by_tissue)   # tissue（组织来源）类别数
+n_tissue   <- length(unique(unlist(lapply(drug_num_list_by_source_tissue, names))))
 n_cellline <- length(unique(dl_cl))             # 细胞系数
 n_method   <- length(ss_list)                   # Signature Search Method 数
-n_gene     <- 12328                             # LINCS2020 landmark 基因数
+n_gene     <- if (!is.null(gene_num_list1) && length(gene_num_list1)) {
+  max(gene_num_list1, na.rm = TRUE)             # 取各数据集的最大值（Tahoe 62,710 / LINCS 12,328）
+} else 12328
 
 sm_quadrant <- list(
   Q1 = "Q1",

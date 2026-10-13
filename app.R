@@ -244,17 +244,24 @@ ui <- page_navbar(
               )
             ),
             pickerInput(
+              "sel_source",
+              label = "Select data source",
+              choices = names(drug_num_list_by_source_tissue),
+              selected = DEFAULT_SOURCE,
+              options = list()
+            ),
+            pickerInput(
               "sel_tissue",
               label = "Select tissue",
               choices = names(drug_num_list_by_tissue),
-              selected = "Bone",
+              selected = DEFAULT_TISSUE_BM,
               options = list()
             ),
             pickerInput(
               "sel_experiment",
               label = "Select a specific dataset",
-              choices = drug_num_list_by_tissue[["Bone"]],
-              selected = "LINCS_U2OS_10uM_6h.rdata",
+              choices = drug_num_list_by_tissue[[DEFAULT_TISSUE_BM]],
+              selected = DEFAULT_DS_BM,
               options = list()
             ),
             downloadButton(
@@ -490,17 +497,24 @@ ui <- page_navbar(
               )
             ),
             pickerInput(
+              "sel_source_sm",
+              label = "Select data source",
+              choices = names(drug_num_list_by_source_tissue),
+              selected = DEFAULT_SOURCE,
+              options = list()
+            ),
+            pickerInput(
               "sel_tissue_sm",
               label = "Select tissue",
               choices = names(drug_num_list_by_tissue),
-              selected = "Breast",
+              selected = DEFAULT_TISSUE_SM,
               options = list()
             ),
             pickerInput(
               "sel_experiment_sm",
               label = "Select a specific dataset",
-              choices = drug_num_list_by_tissue[["Breast"]],
-              selected = "LINCS_MCF7_10uM_6h.rdata",
+              choices = drug_num_list_by_tissue[[DEFAULT_TISSUE_SM]],
+              selected = DEFAULT_DS_SM,
               options = list()
             )
           ),
@@ -918,6 +932,13 @@ ui <- page_navbar(
           br(),
           h3("Download curated pharmacotranscriptomic datasets"),
           pickerInput(
+            "sel_source_dl",
+            label = "Select data source",
+            choices = names(drug_num_list_by_source_tissue),
+            selected = DEFAULT_SOURCE,
+            options = list()
+          ),
+          pickerInput(
             "sel_tissue_dl",
             label = "Select tissue",
             choices = names(drug_num_list_by_tissue),
@@ -982,38 +1003,24 @@ server <- function(input, output, session) {
     serverLoaded <<- TRUE
   })
 
-  # 下载页两级联动：切换 tissue 时，更新 dataset 下拉的可选项与默认值
-  observeEvent(input$sel_tissue_dl, {
-    new_choices <- drug_num_list_by_tissue[[input$sel_tissue_dl]]
-    updatePickerInput(
-      session,
-      "sel_experiment_dl",
-      choices = new_choices,
-      selected = unname(new_choices[1])
-    )
-  })
-
-  # Benchmark 页两级联动
-  observeEvent(input$sel_tissue, {
-    new_choices <- drug_num_list_by_tissue[[input$sel_tissue]]
-    updatePickerInput(
-      session,
-      "sel_experiment",
-      choices = new_choices,
-      selected = unname(new_choices[1])
-    )
-  })
-
-  # Application 页两级联动
-  observeEvent(input$sel_tissue_sm, {
-    new_choices <- drug_num_list_by_tissue[[input$sel_tissue_sm]]
-    updatePickerInput(
-      session,
-      "sel_experiment_sm",
-      choices = new_choices,
-      selected = unname(new_choices[1])
-    )
-  })
+  # ---- 三级联动：数据源 -> 组织 -> 数据集 ----
+  # 切换数据源时同时刷新 tissue 与 dataset；切换 tissue 时只刷新 dataset。
+  # ignoreInit = TRUE：不在启动时覆盖 UI 里写死的默认值（Bone / Breast 等）。
+  make_source_obs <- function(src_id, tis_id, dst_id) {
+    observeEvent(input[[src_id]], {
+      tt <- names(drug_num_list_by_source_tissue[[input[[src_id]]]])
+      updatePickerInput(session, tis_id, choices = tt, selected = tt[1])
+      nc <- drug_num_list_by_source_tissue[[input[[src_id]]]][[tt[1]]]
+      updatePickerInput(session, dst_id, choices = nc, selected = unname(nc[1]))
+    }, ignoreInit = TRUE)
+    observeEvent(input[[tis_id]], {
+      nc <- drug_num_list_by_source_tissue[[input[[src_id]]]][[input[[tis_id]]]]
+      updatePickerInput(session, dst_id, choices = nc, selected = unname(nc[1]))
+    }, ignoreInit = TRUE)
+  }
+  make_source_obs("sel_source_dl", "sel_tissue_dl", "sel_experiment_dl")  # 下载页
+  make_source_obs("sel_source",    "sel_tissue",    "sel_experiment")     # Benchmark
+  make_source_obs("sel_source_sm", "sel_tissue_sm", "sel_experiment_sm")  # Application
 
   ###############################################.
   ## Sourcing tab code  ----
