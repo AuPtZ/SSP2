@@ -23,25 +23,28 @@ if (length(profile_list) == 0) {
 get_drug_num <- function(profile_file) {
   load(file.path("data_preload/drugexp/", profile_file))
   drug_num <- ncol(exp_LINCS2020)
+  gene_num <- nrow(exp_LINCS2020)
   rm(exp_LINCS2020, sig_LINCS2020)
-  
-  # 生成显示名称
+
+  # 生成显示名称（兼容 LINCS_ 与 Tahoe_ 两套前缀）
   disp_name <- gsub("\\.rdata$", "", profile_file)
-  disp_name <- gsub("_", " ", disp_name)
-  disp_name <- gsub("LINCS ", "", disp_name)
-  disp_name <- paste0("LINCS ", disp_name, " (", drug_num, " drugs)")
-  
+  src  <- if (grepl("^Tahoe_", disp_name)) "Tahoe" else "LINCS"
+  disp_name <- gsub("_", " ", sub("^(Tahoe|LINCS)_", "", disp_name))
+  disp_name <- paste0(src, " ", disp_name, " (", drug_num, " drugs)")
+
   gc()
   return(data.frame(
     profile_file = profile_file,
     profile_name = disp_name,
     drug_num     = drug_num,
+    gene_num     = gene_num,
+    source       = if (src == "Tahoe") "Tahoe-100M" else "LINCS",
     stringsAsFactors = FALSE
   ))
 }
 
 drug_num_list <- map_dfr(profile_list, get_drug_num)
-drug_num_list <- drug_num_list[order(-drug_num_list$drug_num), ]
+drug_num_list <- drug_num_list[order(drug_num_list$source, -drug_num_list$drug_num), ]
 
 # 命名字符向量（UI 下拉用）
 drug_num_list1 <- setNames(drug_num_list$profile_file, drug_num_list$profile_name)
@@ -51,4 +54,8 @@ print(head(drug_num_list, 10))
 
 save(drug_num_list,  file = "data_preload/others/drug_num_list.rdata")
 save(drug_num_list1, file = "data_preload/others/drug_num_list1.rdata")
-cat("完成! drug_num_list 已保存\n")
+# 每个数据集的基因数（LINCS 12,328 landmark / Tahoe 62,710 全基因），供首页统计卡片用
+gene_num_list1 <- setNames(drug_num_list$gene_num, drug_num_list$profile_file)
+save(gene_num_list1, file = "data_preload/others/gene_num_list1.rdata")
+cat(sprintf("完成! 共 %d 个谱：LINCS %d / Tahoe %d\n", nrow(drug_num_list),
+            sum(drug_num_list$source == "LINCS"), sum(drug_num_list$source == "Tahoe-100M")))
