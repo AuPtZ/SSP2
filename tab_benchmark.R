@@ -67,7 +67,8 @@ observe({
     # （如 "Computed 50 / 102"），和已渲染的结果图并排显示，像是没跑完。
     rv_bm_prog(list(done = 0L, total = 0L, msg = ""))
     job_info <- read_from_db(jid)
-    output$display_bm <- renderUI({ res_plot(job_info, prefix = "bm") })
+    show_page_spinner()
+    output$display_bm <- renderUI({ on.exit(hide_page_spinner(), add = TRUE); res_plot(job_info, prefix = "bm") })
   }
 })
 

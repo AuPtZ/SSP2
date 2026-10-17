@@ -10,6 +10,13 @@ if (!exists("tip_seen", mode = "environment") || is.null(tip_seen)) {
   tip_seen <- new.env(hash = TRUE, parent = emptyenv())
 }
 
+# ---- plotly widget 会话级缓存（2026-10-15 性能：图惰性构建）----
+# 键 = paste0(prefix, "_", jobid, "_", tab)：切 tab 命中缓存秒出，未构建过的才现场画。
+# 上限 80 条（约 25 MB）后整体清空，避免长时间会话无限增长。
+if (!exists("pic_cache", mode = "environment") || is.null(pic_cache)) {
+  pic_cache <- new.env(hash = TRUE, parent = emptyenv())
+}
+
 .observe_tip <- function(pattern, md_file, title) {
   observe({
     ks <- grep(pattern, names(input), value = TRUE)
@@ -31,6 +38,10 @@ if (!exists("tip_seen", mode = "environment") || is.null(tip_seen)) {
             "How to find optimal method and topN in Benchmark? (AUC)")
 .observe_tip("intro_res_bm_ES_",    "www/info_Q9_bm_ES.md",
             "How to find optimal method and topN in Benchmark? (ES)")
+.observe_tip("intro_res_bm_METRIC_", "www/info_Q9_bm_METRIC.md",
+            "How to read the ranking-quality metrics?")
+.observe_tip("intro_res_bm_SUMMARY_", "www/info_Q9_bm_SUMMARY.md",
+            "How to read the Benchmark overview?")
 .observe_tip("intro_res_sm_sm_",    "www/info_Q9_sm_sm.md",    "Quick Tip")
 .observe_tip("intro_res_sm_cross_", "www/info_Q9_sm_cross.md", "Quick Tip")
 .observe_tip("intro_res_sm_all_",  "www/info_Q9_sm_all.md",  "Quick Tip")
@@ -289,43 +300,179 @@ DRUG_CLICK_SFX  <- "_drugclick"    # 点击时间戳（区分"又点了一次"�
   stop("demo 文件 ", f, " 里的对象名无法识别：", paste(nms, collapse = ", "))
 }
 
+# ---- 视口居中的全屏加载指示（2026-10-16）----
+# withSpinner() 的 loader 是 position:absolute，**相对结果区**居中；而结果区在长表单下方，
+# 首屏根本看不到 → 用户以为"点了没反应"，要下滑才找得到那个转圈。
+# 这里改用 shinycssloaders 自带的**全屏** spinner（#shinycssloaders-global-spinner：
+# position:fixed + z-index 1e8 → 固定在视口正中，与滚动位置无关）。
+show_page_spinner <- function(caption = "Loading results ...", timeout_ms = 60000L) {
+  shinycssloaders::showPageSpinner(caption = caption)
+  # 兜底：全屏 spinner 是 position:fixed + z-index 1e8，一旦"显示后永不隐藏"会盖住整页。
+  # 正常路径由 renderUI 的 on.exit(hide_page_spinner()) 收起；但若渲染出错
+  # （sanitize.errors 下输出不送达客户端，on.exit 不触发），只能靠这个超时兜底。
+  # 直接移除 DOM 元素，不依赖包内部 API。
+  shinyjs::runjs(sprintf(
+    "setTimeout(function(){ var e = document.getElementById('shinycssloaders-global-spinner'); if (e) e.remove(); }, %d);",
+    as.integer(timeout_ms)))
+}
+hide_page_spinner <- function() {
+  shinycssloaders::hidePageSpinner()
+}
+
 # FOR EACH PAGE
 observeEvent(input$runBENdemo,{
   job_info <- .load_demo("demo/BEN1790672381JTV.rdata")
-  output$display_bm <- renderUI({res_plot(job_info, prefix = "bm")})
+  show_page_spinner()
+  output$display_bm <- renderUI({ on.exit(hide_page_spinner(), add = TRUE); res_plot(job_info, prefix = "bm") })
+})
+observeEvent(input$runBENdemo2,{
+  job_info <- .load_demo("demo/BEN_Tahoe_demo2.rdata")
+  show_page_spinner()
+  output$display_bm <- renderUI({ on.exit(hide_page_spinner(), add = TRUE); res_plot(job_info, prefix = "bm") })
 })
 observeEvent(input$runAPPdemo1,{
   job_info <- .load_demo("demo/APP1790669686URX.rdata")
-  output$display_sm <- renderUI({res_plot(job_info, prefix = "sm")})
+  show_page_spinner()
+  output$display_sm <- renderUI({ on.exit(hide_page_spinner(), add = TRUE); res_plot(job_info, prefix = "sm") })
 })
 observeEvent(input$runAPPdemo2,{
   job_info <- .load_demo("demo/APP1790669691LXK.rdata")
-  output$display_sm <- renderUI({res_plot(job_info, prefix = "sm")})
+  show_page_spinner()
+  output$display_sm <- renderUI({ on.exit(hide_page_spinner(), add = TRUE); res_plot(job_info, prefix = "sm") })
 })
 observeEvent(input$runAPPdemo3,{
   job_info <- .load_demo("demo/APP1790735151KID.rdata")
-  output$display_sm <- renderUI({res_plot(job_info, prefix = "sm")})
+  show_page_spinner()
+  output$display_sm <- renderUI({ on.exit(hide_page_spinner(), add = TRUE); res_plot(job_info, prefix = "sm") })
 })
 # FOR JOB PAGE
 observeEvent(input$runjcBENdemo,{
   job_info <- .load_demo("demo/BEN1790672381JTV.rdata")
-  output$display_jc <- renderUI({res_plot(job_info, prefix = "jc")})
+  show_page_spinner()
+  output$display_jc <- renderUI({ on.exit(hide_page_spinner(), add = TRUE); res_plot(job_info, prefix = "jc") })
+})
+observeEvent(input$runjcBENdemo2,{
+  job_info <- .load_demo("demo/BEN_Tahoe_demo2.rdata")
+  show_page_spinner()
+  output$display_jc <- renderUI({ on.exit(hide_page_spinner(), add = TRUE); res_plot(job_info, prefix = "jc") })
 })
 observeEvent(input$runjcAPPdemo1,{
   job_info <- .load_demo("demo/APP1790669686URX.rdata")
-  output$display_jc <- renderUI({res_plot(job_info, prefix = "jc")})
+  show_page_spinner()
+  output$display_jc <- renderUI({ on.exit(hide_page_spinner(), add = TRUE); res_plot(job_info, prefix = "jc") })
 })
 observeEvent(input$runjcAPPdemo2,{
   job_info <- .load_demo("demo/APP1790669691LXK.rdata")
-  output$display_jc <- renderUI({res_plot(job_info, prefix = "jc")})
+  show_page_spinner()
+  output$display_jc <- renderUI({ on.exit(hide_page_spinner(), add = TRUE); res_plot(job_info, prefix = "jc") })
 })
 observeEvent(input$runjcAPPdemo3,{
   job_info <- .load_demo("demo/APP1790735151KID.rdata")
-  output$display_jc <- renderUI({res_plot(job_info, prefix = "jc")})
+  show_page_spinner()
+  output$display_jc <- renderUI({ on.exit(hide_page_spinner(), add = TRUE); res_plot(job_info, prefix = "jc") })
 })
 
 
 
+# ---------------------------------------------------------------------------
+# Benchmark 新指标曲线（2026-10-13 指标重构）。五个指标均有文献先例，出处见
+# R/Utils_BM_metrics.R 头注；零分布 = 标签置换，与 topN/logFC 无关 → 水平参考带。
+# ---------------------------------------------------------------------------
+BM_METRIC_TABS <- c("ES_rank", "AUPRC", "RecallAtK", "EFpct", "AUROC")
+
+
+# 跨扫描的每方法汇总（median / max / 零分布 / 置换显著性）。
+# ★ 当前 UI 的指标 tab 用的是与 AUC/ES 同构的**宽表**（见 res_plot 的 DT_metric）；
+#   本函数保留给将来的 API / 论文批量汇总用。
+metrics_summary_table <- function(curve) {
+  curve %>% dplyr::group_by(Method, Metric) %>%
+    dplyr::summarise(median = median(Value, na.rm = TRUE),
+              max    = max(Value, na.rm = TRUE),
+              null_mean = unique(NullMean)[1],
+              null_q975 = unique(NullQ975)[1], .groups = "drop") %>%
+    dplyr::mutate(sig = median > null_q975) %>%
+    dplyr::select(Method, Metric, median, max, null_mean, null_q975, sig) %>%
+    dplyr::arrange(Metric, dplyr::desc(median)) %>% as.data.frame()
+}
+
+# =============================================================================
+# plotly widget 的**进程级**构建缓存（2026-10-16 性能）
+#
+# 背景：demo/作业的图每次点开都要"现场构建"（AUC 那张 991x7 + loess 实测 ~1.0-1.6 s），
+#   而数据在进程生命周期内是不变的 → 用 memoise 按**数据内容哈希**缓存构建结果，
+#   第二个会话/第二次点击直接命中（哈希一个 41k 行 data.frame 约 20 ms，远快于重建）。
+#   实测：点 demo 首次 ~1.6 s，之后 ~0 s。
+#   注意：不要把 widget 存进 demo rdata —— R 读深层嵌套 list 极慢
+#   （7 个 widget 的 10.8 MB 文件 load 要 2.8 s，而重建只要 1.1 s）。
+# =============================================================================
+# ★ 不用 memoise：它会对**每个参数**做 digest 哈希，41k 行的 METRICS 表哈希一次要
+#   ~0.3 s，抵消缓存收益。改为自建 env + 预先算好的廉价内容指纹（只哈希 topN 列与
+#   Value 的分布摘要，约 1000 个数 → ~1 ms），env 查找是 O(1)。
+.bm_widget_cache <- new.env(hash = TRUE, parent = emptyenv())
+
+# 廉价但敏感的内容指纹：维度 + 扫描列 + Value/p 的分布摘要
+bm_data_key <- function(auc_tab, mtab) {
+  v <- if (is.null(mtab)) numeric(0) else
+         c(as.numeric(mtab[[1]]), nrow(mtab), mean(mtab$Value, na.rm = TRUE),
+           stats::sd(mtab$Value, na.rm = TRUE), max(mtab$Value, na.rm = TRUE),
+           min(mtab$Value, na.rm = TRUE),
+           if ("p_null" %in% names(mtab)) sum(mtab$p_null, na.rm = TRUE) else NA_real_)
+  a <- if (is.null(auc_tab)) numeric(0) else c(as.numeric(auc_tab[[1]]), ncol(auc_tab))
+  paste0(nrow(auc_tab), "x", ncol(auc_tab), "|",
+         digest::digest(c(v, a), algo = "xxhash64"))
+}
+
+bm_get_widget <- function(nm, key, auc_tab, mtab, is_fc) {
+  k <- paste0(nm, "|", key)
+  hit <- .bm_widget_cache[[k]]
+  if (!is.null(hit)) return(hit)
+  w <- bm_build_widget(nm, auc_tab, mtab, is_fc)
+  if (!is.null(w)) {
+    if (length(ls(.bm_widget_cache)) > 32)
+      rm(list = ls(.bm_widget_cache), envir = .bm_widget_cache)
+    assign(k, w, envir = .bm_widget_cache)
+  }
+  w
+}
+
+# ★ toWebGL() 在 R 侧不改 trace 类型，是 **plotly.js 在客户端**把 scatter 转成
+#   scattergl；而 scattergl 的校验器不接受 hoveron（scatter 专有属性），会报
+#   "'scattergl' objects don't have these attributes: 'hoveron'" 导致图渲染失败。
+#   ggplotly 会给带 hover 文本的 trace 加 hoveron="points"，这里统一剥掉
+#   （scatter 默认就会在点上显示 hover，去掉不影响交互）。
+.bm_strip_hoveron <- function(w) {
+  d <- w$x$data
+  if (is.null(d) || !is.list(d)) return(w)
+  for (i in seq_along(d)) {
+    if (!is.null(d[[i]]$hoveron)) d[[i]]$hoveron <- NULL
+    # ggplotly 会给 legend trace 名加 ",N" 后缀（如 "CMap,1"），这里清掉
+    if (!is.null(d[[i]]$name) && grepl(",[0-9]+$", d[[i]]$name))
+      d[[i]]$name <- sub(",[0-9]+$", "", d[[i]]$name)
+  }
+  w$x$data <- d
+  w
+}
+
+bm_build_widget <- function(nm, auc_tab, mtab, is_fc) {
+  # ★ 默认不再用 toWebGL（2026-10-16 决定）：实测收益为零（headless 1.46 vs 1.48 s），
+  #   却连踩三个坑——① scattergl 不支持 mode="text"（热图数值全丢）；
+  #   ② 校验器不接受 hoveron（整图报错）；③ 不支持空心符号 shape=21（峰值环变实心黑团）。
+  #   散点已抽稀到 ~150 点/方法（约 1 千点/图），SVG 完全够用。
+  mk <- function(gp, use_gl = FALSE) {
+    w <- ggplotly(gp, tooltip = c("x", "y"))
+    w <- .bm_strip_hoveron(w)               # 防御性：即便将来有人改回 WebGL 也不会再报 hoveron
+    if (use_gl) w <- plotly::toWebGL(w)
+    plotly::config(w, displayModeBar = FALSE)
+  }
+  if (nm == "Summary")
+    return(if (is.null(mtab)) NULL else mk(draw_dr_summary(mtab), use_gl = FALSE))
+  if (nm == "AUC")
+    return(if (is_fc) mk(draw_dr_auc_fc(auc_tab, max_points = 150))
+                  else mk(draw_dr_auc(auc_tab, max_points = 150)))
+  if (!is.null(mtab) && nm %in% BM_METRIC_TABS)
+    return(mk(draw_dr_metrics(mtab, nm, max_points = 150)))
+  NULL
+}
 res_plot <- function(job_info, prefix = "res"){
   # 每个调用上下文（Benchmark / Job Center / Application）传不同 prefix，
   # 使 actionButton 的 id 在会话内唯一，避免 "IDs were used for more than one input"。
@@ -343,34 +490,132 @@ res_plot <- function(job_info, prefix = "res"){
   if(job_info$yourmodule == "ALL (ES and AUC)" || 
      grepl("^ALL_FC$", job_info$yourmodule)) {
     
-    res_bm1 <- job_info$yourtable$`AUC` %>% as_tibble()
-    res_bm2 <- job_info$yourtable$`ES` %>% as_tibble()
-    
-    if (is_fc_mode(res_bm1)) {
-      pic_out1 <- ggplotly(draw_dr_auc_fc(res_bm1))
-      pic_out2 <- ggplotly(draw_dr_es_fc(res_bm2))
-    } else {
-      pic_out1 <- ggplotly(draw_dr_auc(res_bm1))
-      pic_out2 <- ggplotly(draw_dr_es(res_bm2))
-    }
-
-    DT_res_bm1 <- datatable(res_bm1) %>% 
-      formatStyle(names(res_bm1)[which.max(res_bm1[1,-1]) + 1],
-                  backgroundColor = styleEqual(res_bm1[1, which.max(res_bm1[1,-1]) + 1], c('yellow')))
-    DT_res_bm2 <- datatable(res_bm2) %>% 
-      formatStyle(names(res_bm2)[which.min(res_bm2[1,-1])+1],
-                  backgroundColor = styleEqual(res_bm2[1, which.min(res_bm2[1,-1]) + 1], c('yellow')))
-    
-    tagList(
-      .job_info_block(job_info),
-      shiny::h3("Results of AUC",actionButton(tid("intro_res_bm_AUC"),"Quick Tip",class = "btn-success")),
-      renderPlotly(pic_out1),
-      DT::renderDataTable(DT_res_bm1),
-      shiny::br(),
-      shiny::h3("Results of ES",actionButton(tid("intro_res_bm_ES"),"Quick Tip",class = "btn-success")),
-      renderPlotly(pic_out2),
-      DT::renderDataTable(DT_res_bm2),
-    )
+res_bm1 <- job_info$yourtable$`AUC` %>% as_tibble()
+res_bm2 <- job_info$yourtable$`ES` %>% as_tibble()
+is_fc <- is_fc_mode(res_bm1)
+# ---- 指标数据只解析一次（很便宜，eager）----
+mtab <- NULL; mets <- character(0); metric_err <- NULL
+if (!is.null(job_info$yourtable$METRICS)) {
+mr <- tryCatch({
+mt <- job_info$yourtable$METRICS %>% tibble::as_tibble()
+mt <- mt[mt$Metric != "ES_abs", , drop = FALSE]     # 退役对照无零分布，不进图/表
+list(mtab = mt, mets = intersect(BM_METRIC_TABS, unique(mt$Metric)))
+}, error = function(e) { metric_err <<- conditionMessage(e); NULL })
+if (!is.null(mr)) { mtab <- mr$mtab; mets <- mr$mets }
+}
+# Summary 放在最前；旧 ES（gsea1 的 |score| 加权版，零分布偏正 +0.26）已退役，
+# 只保留 ES_rank（= GSEA 原文未加权 ES，零分布 0）——两者同族，保留一个即可。
+# ★ AUC tab 已退役（2026-10-16）：它与 AUROC 是同一个统计量，而 legacy AUC 的
+#   direction 是反的（实测报告 1 - AUROC，表里黄色"最佳 topN"实际最差），三重验证见
+#   R/Utils_BM.R 的 process_raw1 注释。AUROC 已正确覆盖该信息且带置换 p 值。
+#   注：AUC-only 单模块提交仍走 draw_dr_auc（direction 已修），此处只去掉 ALL 分支的重复 tab。
+tab_ids <- if (!is.null(mtab) && length(mets) > 0) c("Summary", mets) else c("AUC")
+# ---- 方案②：demo 文件预存了构建好的 widget（PICS）→ 灌缓存，跳过构建，秒开 ----
+if (!is.null(job_info$yourtable$PICS)) {
+for (nm in intersect(names(job_info$yourtable$PICS), tab_ids))
+pic_cache[[paste0(prefix, "_", jid, "_", nm)]] <- job_info$yourtable$PICS[[nm]]
+}
+# ---- 方案①：图惰性构建 + 会话缓存（2026-10-15）----
+build_pic <- function(nm) bm_get_widget(nm, bm_data_key(res_bm1, mtab), res_bm1, mtab, is_fc)
+get_pic <- function(nm) {
+key <- paste0(prefix, "_", jid, "_", nm)
+hit <- pic_cache[[key]]
+if (!is.null(hit)) return(hit)        # 缓存命中：切回已看过的 tab 秒出
+w <- build_pic(nm)                     # 未构建过：现场画（1-2 s，spinner 覆盖）
+if (!is.null(w)) {
+pic_cache[[key]] <- w
+if (length(ls(pic_cache)) > 80) rm(list = ls(pic_cache), envir = pic_cache)  # 防无限增长
+}
+w
+}
+# ---- 数据表（eager，很便宜）：AUC 表 / ES 表 / 指标汇总表 ----
+DT_res_bm1 <- datatable(res_bm1) %>%
+formatStyle(names(res_bm1)[which.max(res_bm1[1,-1]) + 1],
+backgroundColor = styleEqual(res_bm1[1, which.max(res_bm1[1,-1]) + 1], c('yellow')))
+DT_overview <- NULL      # Summary 页的跨方法总览表
+if (!is.null(mtab) && length(mets) > 0) {
+  DT_overview <- tryCatch({
+    ov <- metrics_overview(mtab)
+    if (is.null(ov)) NULL else DT::datatable(ov)
+  }, error = function(e) { metric_err <<- conditionMessage(e); message("[res_plot] Summary 表构建失败: ", conditionMessage(e)); NULL })
+}
+DT_metric <- list()      # 名字 = 指标名；每个都是与 AUC/ES 表同构的宽表
+if (!is.null(mtab) && length(mets) > 0) {
+DT_metric <- tryCatch({
+  # 显示名与列序都跟 AUC/ES 表一致（XSum 表是 rename_col_rules 改出来的同名）
+  disp <- c(SS_CMap = "CMap", SS_GSEA = "GSEA", SS_XCos = "XCos", SS_Xsum = "XSum",
+            SS_ZhangScore = "ZhangScore", SS_PLAGE = "PLAGE", SS_QuSAGE = "QuSAGE")
+  swp <- names(mtab)[1]                                    # TopN 或 logFC
+  out <- list()
+  for (mm in mets) {
+    d <- mtab[mtab$Metric == mm, c(swp, "Method", "Value", "NullMean", "NullQ975")]
+    w <- tidyr::pivot_wider(d, names_from = Method, values_from = Value)
+    ssm_cols <- intersect(names(disp), names(w))              # 原始 SS_ 方法列
+    w <- w[, c(swp, ssm_cols), drop = FALSE]
+    names(w) <- c(swp, unname(disp[ssm_cols]))                # 换成与 AUC/ES 表一致的显示名
+    # 列序直接沿用 AUC 表（AUC/ES 表的列序是平台里方法顺序的唯一事实源）
+    w <- w[, c(swp, intersect(names(res_bm1)[-1], names(w)[-1])), drop = FALSE]
+    mcols <- names(w)[-1]                                     # ★ 之后一律用新列名索引
+    # 保留 4 位小数：AUC/ES 表在页面上就是这个精度（pROC 输出本身位数就少）
+    for (cc in mcols) w[[cc]] <- round(as.numeric(w[[cc]]), 4)
+    # 尾部两列：置换零分布（该指标下是常量，随表一起给出，便于和数值直接比）
+    w[["null_mean"]] <- round(unique(d$NullMean)[1], 4)
+    w[["null_q975"]] <- round(unique(d$NullQ975)[1], 4)
+    # 排序 + 高亮：与 AUC/ES 表同一套规则（按"最大值所在列"降序，首行最大值黄色）
+    top_col <- mcols[which.max(vapply(mcols, function(cc) max(w[[cc]], na.rm = TRUE), numeric(1)))]
+    w <- w[order(-w[[top_col]], na.last = TRUE), , drop = FALSE]
+    out[[mm]] <- DT::datatable(w) %>%
+      # 注意：w 是 tibble，w[1, col] 返回 1x1 tibble 会让 styleEqual 报错，必须取标量
+      DT::formatStyle(top_col, backgroundColor = DT::styleEqual(w[[top_col]][1], c("yellow")))
+  }
+  out
+}, error = function(e) { metric_err <<- conditionMessage(e); message("[res_plot] 指标表构建失败: ", conditionMessage(e)); NULL })
+}
+# ---- Quick Tip 按钮放进各 tab（激活项才可见；id 唯一，无重复 id 警告）----
+# 每个 tab 一个**唯一**按钮 id：所有 tabPanel 同时存在于 DOM（CSS 隐藏），
+# 共用 id 会触发 Shiny "Duplicate input ID"（5 个指标 tab 曾全用 METRICS 一个 id）
+tip_of <- function(nm) {
+  if (nm == "AUC") "intro_res_bm_AUC"
+  else if (nm == "Summary") "intro_res_bm_SUMMARY"
+  else paste0("intro_res_bm_METRIC_", nm)
+}
+# tab 标题用显示名（ES_rank -> ES），但 value 保持**内部指标键**：
+# bslib 的 tabsetPanel 把 value 发给 input$res_tabs，联动查表/查图全靠它，
+# 若把标题当 value（即不显式指定），改名后 cur_tab() 会拿到 "ES" 而查不到 "ES_rank"。
+tabs <- lapply(tab_ids, function(nm) {
+  lab <- .bm_metric_label(nm)
+  shiny::tabPanel(title = lab, value = nm,
+    shiny::div(style = "display:flex; justify-content:space-between; align-items:center;",
+      shiny::tags$span(lab, style = "font-weight:600;"),
+      actionButton(tid(tip_of(nm)), "Quick Tip", class = "btn-outline-success btn-sm")))
+})
+# ---- 联动数据区：标题与表都随 tab 切换 ----
+# ---- 三个输出统一用**匿名 render 函数**（与优化前同一模式）----
+# 试过显式 output[[id]] <- ... 在 renderUI 内动态注册，testServer 实测 promise 解析报错；
+# 匿名形式在本项目已多次验证可用（图/标题/表各一个，页面内不重复）。
+#
+# ★ 不能用 req(input$res_tabs)：bslib 的 tabsetPanel **只在用户点击时**才把选中值发到
+#   服务端，初始化不主动上报 → 默认激活的那个 tab 的值服务端永远拿不到 →
+#   req() 永久挂起 → 图和表全空白（也不报错）。故改为缺省回落到 tab_ids[1]。
+# tabset 的 input 名就是它的 DOM id —— tid("res_tabs") = "<prefix>_res_tabs_<jobid>"。
+# ★ 之前误写成 input$res_tabs（漏了 prefix+jobid）→ 服务端永远读到 NULL：
+#   表现一：req() 永久挂起 → 图和表全空白；改用回退后又表现二：切 tab 永不联动。
+tab_inp  <- tid("res_tabs")
+cur_tab <- function() { v <- input[[tab_inp]]; if (is.null(v)) tab_ids[1] else v }
+tagList(
+.job_info_block(job_info),
+do.call(shiny::tabsetPanel, c(list(id = tid("res_tabs"), selected = tab_ids[1], type = "pills"), tabs)),
+renderPlotly({ get_pic(cur_tab()) }),   # 惰性：图在渲染时才构建（写成 eager 会退化回 3.5 s 阻塞）
+shiny::br(),
+DT::renderDataTable({
+  tb <- cur_tab()
+  if (tb == "Summary") DT_overview
+  else if (!is.null(DT_metric[[tb]])) DT_metric[[tb]]
+  else DT::datatable(data.frame(note = "table unavailable")) }),
+if (!is.null(metric_err))
+shiny::tags$pre(paste0("Ranking-quality metrics failed: ", metric_err),
+style = "color:#b02a37;white-space:pre-wrap;")
+)
     
   } else if(job_info$yourmodule == "AUC" || job_info$yourmodule == "AUC_FC") {
     
@@ -379,7 +624,7 @@ res_plot <- function(job_info, prefix = "res"){
     tip_id <- if (res_title == "AUC_FC") "AUC" else res_title
 
     pic_out <- if (is_fc_mode(res_bm))
-      ggplotly(draw_dr_auc_fc(res_bm)) else ggplotly(draw_dr_auc(res_bm))
+      ggplotly(draw_dr_auc_fc(res_bm), tooltip = c("x", "y")) else ggplotly(draw_dr_auc(res_bm), tooltip = c("x", "y"))
 
     DT_res_bm <- datatable(res_bm) %>% 
       formatStyle(names(res_bm)[which.max(res_bm[1,-1]) + 1],
@@ -400,7 +645,7 @@ res_plot <- function(job_info, prefix = "res"){
     res_title = job_info$yourmodule
 
     pic_out <- if (is_fc_mode(res_bm))
-      ggplotly(draw_dr_es_fc(res_bm)) else ggplotly(draw_dr_es(res_bm))
+      ggplotly(draw_dr_es_fc(res_bm), tooltip = c("x", "y")) else ggplotly(draw_dr_es(res_bm), tooltip = c("x", "y"))
 
     DT_res_bm <- datatable(res_bm) %>% 
       formatStyle(names(res_bm)[which.min(res_bm[1,-1]) + 1],

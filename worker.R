@@ -28,6 +28,7 @@ suppressPackageStartupMessages({
   source("R/global.R")                       # 包、预加载数据、find_original_names 等
   source("R/SS.R")                           # 签名搜索算法
   source("R/Utils_BM.R")                     # get_benchmark ...
+  source("R/Utils_BM_metrics.R")             # 排序质量指标（Benchmark 指标重构）
   source("R/Utils_SM.R")                     # get_single_method ...
                                              # R/db_utils.R 已删除（死代码，收敛进 queue_utils.R）
   source("R/queue_utils.R")                  # 队列 + 写库助手（本方案核心）

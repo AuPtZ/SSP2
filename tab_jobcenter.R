@@ -28,8 +28,10 @@ observeEvent(input$jobid_get, {
   # 报警子层
   
   
+  show_page_spinner()
   output$display_jc <- renderUI({
-    
+    on.exit(hide_page_spinner(), add = TRUE)
+
     isolate({
       
       # print("开始判断~")
@@ -138,6 +140,13 @@ read_from_db <- function(Jobid_query){
           as.data.frame() ,
         "ES" =  tbl(con_red_res, paste0(retrieve_job$Jobid,"_ES")) %>% 
           as.data.frame()
+      )
+      
+    } else if (retrieve_job$table_num == 3) {
+      retrieve_table <- list(
+        "AUC"     = tbl(con_red_res, paste0(retrieve_job$Jobid, "_AUC")) %>% as.data.frame(),
+        "ES"      = tbl(con_red_res, paste0(retrieve_job$Jobid, "_ES")) %>% as.data.frame(),
+        "METRICS" = tbl(con_red_res, paste0(retrieve_job$Jobid, "_METRICS")) %>% as.data.frame()
       )
       
     }

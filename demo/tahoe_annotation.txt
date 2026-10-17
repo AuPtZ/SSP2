@@ -1,0 +1,380 @@
+Compound_name	Group
+(R)-Verapamil (hydrochloride)	Ineffective
+(S)-Crizotinib	Ineffective
+18β-Glycyrrhetinic acid	Ineffective
+4EGI-1	Ineffective
+5-Azacytidine	Ineffective
+5-Fluorouracil	Ineffective
+8-Hydroxyquinoline	Ineffective
+9-ING-41	Ineffective
+Abemaciclib	Ineffective
+Abiraterone acetate	Ineffective
+Acetazolamide	Ineffective
+Acetohexamide	Ineffective
+Adagrasib	Ineffective
+Adenine	Ineffective
+Adenosine	Ineffective
+Afatinib	Ineffective
+Aliskiren	Ineffective
+Allantoin	Ineffective
+Allopurinol	Ineffective
+Almonertinib (hydrochloride)	Ineffective
+Almonertinib (mesylate)	Ineffective
+Alpelisib	Ineffective
+Altretamine	Ineffective
+Amsacrine	Ineffective
+Anastrozole	Ineffective
+Anethole trithione	Ineffective
+Apalutamide	Ineffective
+Aprepitant	Ineffective
+APTO-253	Ineffective
+Arbutin	Ineffective
+Artemether	Ineffective
+Artesunate	Ineffective
+Asciminib	Ineffective
+Aspirin	Ineffective
+AT7519	Ineffective
+Ataluren	Ineffective
+Atazanavir (sulfate)	Ineffective
+Auranofin	Ineffective
+AZD-7648	Ineffective
+AZD-8055	Ineffective
+AZD1390	Ineffective
+AZD2858	Ineffective
+Azithromycin (hydrate)	Ineffective
+Baicalin	Ineffective
+Balsalazide (sodium hydrate)	Ineffective
+BAY1125976	Ineffective
+Belinostat	Ineffective
+Belumosudil	Ineffective
+Belumosudil (mesylate)	Ineffective
+Belzutifan	Ineffective
+Bendamustine	Ineffective
+Benproperine (phosphate)	Ineffective
+Bentamapimod	Ineffective
+Benztropine (mesylate)	Ineffective
+Berbamine	Ineffective
+Berbamine (dihydrochloride)	Ineffective
+Berberine (chloride hydrate)	Ineffective
+Bergenin	Ineffective
+Bestatin	Ineffective
+Bestatin (hydrochloride)	Ineffective
+Betamethasone dipropionate	Ineffective
+Bexarotene	Ineffective
+BI-3406	Ineffective
+BI-78D3	Ineffective
+Bicalutamide	Ineffective
+Bimatoprost	Ineffective
+Bimiralisib	Ineffective
+Binimetinib	Ineffective
+Bisoprolol (hemifumarate)	Ineffective
+Bortezomib	Ineffective
+Bosentan (hydrate)	Ineffective
+Brimonidine	Ineffective
+Brivudine	Ineffective
+Budesonide	Ineffective
+Busulfan	Ineffective
+c-Kit-IN-1	Ineffective
+Cabozantinib (S-malate)	Ineffective
+Canagliflozin	Ineffective
+Canagliflozin (hemihydrate)	Ineffective
+Capivasertib	Ineffective
+Capmatinib	Ineffective
+Captopril	Ineffective
+Carbamazepine	Ineffective
+Carbidopa (monohydrate)	Ineffective
+Celecoxib	Ineffective
+Cepharanthine	Ineffective
+Chlorhexidine (diacetate)	Ineffective
+Ciclopirox	Ineffective
+Cilostazol	Ineffective
+Cinacalcet	Ineffective
+Citalopram (hydrobromide)	Ineffective
+Clobetasol propionate	Ineffective
+Clofarabine	Ineffective
+Clonidine (hydrochloride)	Ineffective
+Clopidogrel	Ineffective
+Clotrimazole	Ineffective
+Cloxacillin (sodium)	Ineffective
+Cobimetinib	Ineffective
+CP21R7	Ineffective
+crizotinib	Ineffective
+Crizotinib (hydrochloride)	Ineffective
+Cyclosporin A	Ineffective
+Cysteamine (hydrochloride)	Ineffective
+Cytarabine	Ineffective
+Cytarabine (hydrochloride)	Ineffective
+Dabrafenib	Ineffective
+Daidzin	Ineffective
+Dapagliflozin	Ineffective
+Dapagliflozin ((2S)-1,2-propanediol, hydrate)	Ineffective
+Daptomycin	Ineffective
+Darinaparsin	Ineffective
+Darolutamide	Ineffective
+Decitabine	Ineffective
+Delamanid	Ineffective
+Demeclocycline	Ineffective
+Dexamethasone	Ineffective
+Dexmedetomidine	Ineffective
+Diammonium Glycyrrhizinate	Ineffective
+Digitoxin	Ineffective
+Dihydroartemisinin	Ineffective
+Dimethyl fumarate	Ineffective
+Dinaciclib	Ineffective
+Diphenhydramine	Ineffective
+Docetaxel	Effective
+Docetaxel (Trihydrate)	Effective
+Dorzolamide (hydrochloride)	Ineffective
+Doxorubicin (hydrochloride)	Ineffective
+Doxycycline (monohydrate)	Ineffective
+Drospirenone	Ineffective
+DT-061	Ineffective
+DTP3	Ineffective
+Econazole	Ineffective
+Edoxaban (tosylate monohydrate)	Ineffective
+Elagolix sodium	Ineffective
+Elimusertib hydrochloride	Ineffective
+Encorafenib	Ineffective
+Entecavir (monohydrate)	Ineffective
+Entrectinib	Ineffective
+Epirubicin (hydrochloride)	Ineffective
+Eplerenone	Ineffective
+Erdafitinib	Ineffective
+ERK5-IN-2	Ineffective
+Erlotinib	Ineffective
+Erythromycin	Ineffective
+Esmolol (hydrochloride)	Ineffective
+Estrone sulfate (potassium)	Ineffective
+ETC-206	Ineffective
+Everolimus	Ineffective
+EX229	Ineffective
+Fedratinib (hydrochloride hydrate)	Ineffective
+Fenofibrate	Ineffective
+Ferulic acid	Ineffective
+Filgotinib	Ineffective
+Finasteride	Ineffective
+Fingolimod (hydrochloride)	Ineffective
+Flumatinib (mesylate)	Ineffective
+Flutamide	Ineffective
+Fluvoxamine	Ineffective
+Fluvoxamine (maleate)	Ineffective
+Folic acid	Ineffective
+Fostamatinib (disodium hexahydrate)	Ineffective
+Fulvestrant	Ineffective
+Fumaric acid	Ineffective
+Furosemide	Ineffective
+Fusidic acid	Ineffective
+Futibatinib	Ineffective
+Gallic acid	Ineffective
+Gallic acid (hydrate)	Ineffective
+Gefitinib	Ineffective
+Gemcitabine	Ineffective
+Gemfibrozil	Ineffective
+Glasdegib	Ineffective
+Glycyrrhizic acid	Ineffective
+Goserelin (acetate)	Ineffective
+GSK1059615	Ineffective
+Harringtonine	Ineffective
+Hesperidin	Ineffective
+Hexylresorcinol	Ineffective
+HI-TOPK-032	Ineffective
+Homoharringtonine	Ineffective
+Hydroxyfasudil	Ineffective
+Hydroxyurea	Ineffective
+Idarubicin (hydrochloride)	Ineffective
+Idoxuridine	Ineffective
+Imiquimod (hydrochloride)	Ineffective
+Imiquimod (maleate)	Ineffective
+Indacaterol (maleate)	Ineffective
+Infigratinib	Ineffective
+Ipatasertib	Ineffective
+IQ 1	Ineffective
+Irinotecan	Ineffective
+Irinotecan (hydrochloride)	Ineffective
+Isocorydine	Ineffective
+Ivabradine (hydrochloride)	Ineffective
+Ivermectin	Ineffective
+Ixazomib	Ineffective
+Ixazomib citrate	Ineffective
+L-Eflornithine (monohydrochloride)	Ineffective
+L-Thyroxine (sodium salt pentahydrate)	Ineffective
+Lactate (calcium)	Ineffective
+Lapatinib ditosylate	Ineffective
+Larotrectinib	Ineffective
+Larotrectinib sulfate	Ineffective
+LB-100	Ineffective
+Lenalidomide (hemihydrate)	Ineffective
+Levobupivacaine (hydrochloride)	Ineffective
+Lidocaine (hydrochloride)	Ineffective
+Ligustrazine	Ineffective
+Lipoic acid	Ineffective
+LJI308	Ineffective
+Lonafarnib	Ineffective
+Loperamide (hydrochloride)	Ineffective
+Lopinavir	Ineffective
+Lucanthone	Ineffective
+Lumateperone (tosylate)	Ineffective
+LY-2584702 (tosylate salt)	Ineffective
+LY2090314	Ineffective
+Macitentan	Ineffective
+Malotilate	Ineffective
+Mebendazole	Effective
+Medroxyprogesterone acetate	Ineffective
+Megestrol	Ineffective
+Meloxicam	Ineffective
+Menadione	Ineffective
+Methotrexate	Ineffective
+Methyl aminolevulinate (hydrochloride)	Ineffective
+Methylprednisolone succinate	Ineffective
+Methylthiouracil	Ineffective
+Mifepristone	Ineffective
+Minodronic acid	Ineffective
+Mitoxantrone (dihydrochloride)	Ineffective
+MK-3903	Ineffective
+MK-8353	Ineffective
+ML264	Ineffective
+Monocrotaline	Ineffective
+Mozavaptan	Ineffective
+Nafamostat (mesylate)	Ineffective
+Naproxen	Ineffective
+Neratinib	Ineffective
+Neratinib (maleate)	Ineffective
+Nevirapine	Ineffective
+NG25	Ineffective
+Niclosamide (olamine)	Ineffective
+Nimesulide	Ineffective
+Norepinephrine (hydrochloride)	Ineffective
+NVP-BHG712	Ineffective
+Olanzapine	Ineffective
+olaparib	Ineffective
+Oleic acid	Ineffective
+Omeprazole	Ineffective
+Omeprazole (sodium)	Ineffective
+Orlistat	Ineffective
+Ornidazole	Ineffective
+Osimertinib (mesylate)	Ineffective
+OTS514	Ineffective
+Ouabain (Octahydrate)	Ineffective
+Oxaliplatin	Ineffective
+Oxaprozin	Ineffective
+Paclitaxel	Effective
+palbociclib	Ineffective
+Palmatine (chloride)	Ineffective
+Panobinostat	Ineffective
+Pasireotide (acetate)	Ineffective
+Pemetrexed	Ineffective
+Pemigatinib	Ineffective
+Penfluridol	Ineffective
+Pentagastrin	Ineffective
+Pentamidine (isethionate)	Ineffective
+Pentoxifylline	Ineffective
+Peretinoin	Ineffective
+Perindopril (erbumine)	Ineffective
+Pexidartinib (hydrochloride)	Ineffective
+PF-06260933	Ineffective
+PH-797804	Ineffective
+Phenylephrine (hydrochloride)	Ineffective
+Phenytoin (sodium)	Ineffective
+Pimitespib	Ineffective
+Pimozide	Ineffective
+Pioglitazone	Ineffective
+Piroxicam	Ineffective
+Pitavastatin (Calcium)	Ineffective
+Plicamycin	Ineffective
+Ponatinib	Ineffective
+Posaconazole	Ineffective
+Pralsetinib	Ineffective
+Pravastatin (sodium)	Ineffective
+Procainamide (hydrochloride)	Ineffective
+Proglumide	Ineffective
+Pyridoxine	Ineffective
+Pyridoxine (hydrochloride)	Ineffective
+Quinestrol	Ineffective
+Quinidine (15% dihydroquinidine)	Ineffective
+Radotinib	Ineffective
+Ralimetinib dimesylate	Ineffective
+Raltitrexed	Ineffective
+Ranolazine	Ineffective
+Rapamycin	Ineffective
+Regorafenib	Ineffective
+Relugolix	Ineffective
+Resveratrol	Ineffective
+Retinoic acid	Ineffective
+Ribociclib	Ineffective
+Rifaximin	Ineffective
+Riluzole hydrochloride	Ineffective
+Rimonabant	Ineffective
+Rimonabant (Hydrochloride)	Ineffective
+Ritonavir	Ineffective
+RMC-6236	Ineffective
+Ropivacaine (hydrochloride monohydrate)	Ineffective
+Rosiglitazone	Ineffective
+Roxadustat	Ineffective
+Rucaparib (phosphate)	Ineffective
+Rutin (trihydrate)	Ineffective
+S-Adenosyl-L-methionine (disulfate tosylate)	Ineffective
+Sacubitril/Valsartan	Ineffective
+Salicylic acid	Ineffective
+Sapanisertib	Ineffective
+Saquinavir	Ineffective
+SBI-0640756	Ineffective
+Selinexor	Ineffective
+Sildenafil	Ineffective
+Silodosin	Ineffective
+Simotinib	Ineffective
+Sinomenine	Ineffective
+Sivelestat (sodium tetrahydrate)	Ineffective
+Sodium Salicylate	Ineffective
+Sonidegib	Ineffective
+Sulfatinib	Ineffective
+Sulfisoxazole	Ineffective
+Sunitinib	Ineffective
+Tadalafil	Ineffective
+TAK-733	Ineffective
+TAK-901	Ineffective
+Talc	Ineffective
+Tazarotene	Ineffective
+Temsirolimus	Ineffective
+Temuterkib	Ineffective
+Terfenadine	Ineffective
+Tetracycline (hydrochloride)	Ineffective
+Thymol	Ineffective
+Thymopentin	Ineffective
+Tirabrutinib	Ineffective
+Tirabrutinib (hydrochloride)	Ineffective
+Tofacitinib	Ineffective
+Tofacitinib (citrate)	Ineffective
+Tolcapone	Ineffective
+Tolmetin	Ineffective
+Tomivosertib	Ineffective
+Topotecan (hydrochloride)	Ineffective
+Torkinib	Ineffective
+Trametinib	Ineffective
+Trametinib (DMSO_TF solvate)	Ineffective
+Tranilast	Ineffective
+Triamcinolone	Ineffective
+Triclosan	Ineffective
+Trifluridine	Ineffective
+Trimetrexate	Ineffective
+Tubulin inhibitor 6	Effective
+Tucatinib	Ineffective
+Tucidinostat	Ineffective
+ULK-101	Ineffective
+Uridine	Ineffective
+Valdecoxib	Ineffective
+Vandetanib	Ineffective
+Vemurafenib	Ineffective
+venetoclax	Ineffective
+Verapamil	Ineffective
+Verteporfin	Ineffective
+Vilanterol	Ineffective
+Vinblastine (sulfate)	Effective
+vincristine	Effective
+Vismodegib	Ineffective
+Vitamin K4	Ineffective
+Volasertib	Ineffective
+Voriconazole	Ineffective
+Vortioxetine	Ineffective
+XRK3F2	Ineffective
+Zileuton	Ineffective
+γ-Oryzanol	Ineffective

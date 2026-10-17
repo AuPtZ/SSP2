@@ -390,6 +390,11 @@ ui <- page_navbar(
             "runBENdemo",
             "demo(Benchmark)",
             class = "btn-outline-primary"
+          ),
+          actionButton(
+            "runBENdemo2",
+            "demo2(Tahoe)",
+            class = "btn-outline-primary"
           )
         )
       ),
@@ -653,6 +658,11 @@ ui <- page_navbar(
           actionButton(
             "runjcBENdemo",
             "demo(Benchmark)",
+            class = "btn-outline-primary"
+          ),
+          actionButton(
+            "runjcBENdemo2",
+            "demo2(Tahoe)",
             class = "btn-outline-primary"
           ),
           actionButton(
