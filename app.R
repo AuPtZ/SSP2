@@ -316,63 +316,46 @@ ui <- page_navbar(
               accept = c(".csv", ".txt")
             )
           ),
+div(
+class = "mb-0",
+div(
+class = "fw-bold mb-0",
+step_pop(
+" Step 4. Upload drug annotation (a one-column drug list)",
+paste(
+"Upload a one-column list of drug names (header: Compound_name) - the drugs you want the signature search to retrieve. A",
+a(
+href = "demo/drug_annotation_ES.txt",
+"demo drug annotation"
+),
+"is provided.",
+"<br>Then tell the platform what these drugs represent (Step 5): <b>Effective drugs</b> for a treatment-efficacy benchmark, or <b>Toxic drugs</b> for a toxicity-screening benchmark."
+)
+)
+),
+fileInput(
+inputId = "file_anno",
+label = NULL,
+buttonLabel = "Browse...",
+placeholder = "No file selected",
+accept = c(".csv", ".txt")
+)
+),
+div(
+class = "mb-0",
+div(class = "fw-bold mb-0", " Step 5. What do these drugs represent?"),
+radioButtons(
+"anno_type",
+label = NULL,
+choices = c("Effective drugs (efficacy benchmark)" = "effective",
+"Toxic drugs (toxicity screening)" = "toxic"),
+selected = "effective",
+inline = TRUE
+)
+),
           div(
             class = "mb-0",
-            div(
-              class = "fw-bold mb-0",
-              step_pop(
-                " Step 4a. Upload drug annotations (for AUC)",
-                paste(
-                  "At least upload one type annotation in 4a or 4b, also you can upload both of them. For AUC, we recommend upload a list of experimentally evaluated drugs (for example, IC50 < 10uM or IC50 > 10uM). A",
-                  a(
-                    href = "demo/drug_annotation_AUC.txt",
-                    "demo drug annotation for AUC"
-                  ),
-                  "is provided.",
-                  "<br>SSP accept drug name as input, if you have other identifier (e.g. PubchemCID), please go to",
-                  as.character(strong(" converter page")),
-                  " to convert your annotation."
-                )
-              )
-            ),
-            fileInput(
-              inputId = "file_IC50",
-              label = NULL,
-              buttonLabel = "Browse...",
-              placeholder = "No file selected",
-              accept = c(".csv", ".txt")
-            )
-          ),
-          div(
-            class = "mb-0",
-            div(
-              class = "fw-bold mb-0",
-              step_pop(
-                " Step 4b. Upload drug annotations (for ES)",
-                paste(
-                  "At least upload one drug annotation in 4a or 4b, also you can upload both of them. For ES, we recommend upload a list of clinically effective drugs (for example, FDA-approved drugs). A",
-                  a(
-                    href = "demo/drug_annotation_ES.txt",
-                    "demo drug annotation for ES"
-                  ),
-                  "is provided.",
-                  "<br>SSP accept drug name as input, if you have other identifier (e.g. PubchemCID), please go to",
-                  as.character(strong(" converter page")),
-                  " to convert your annotation."
-                )
-              )
-            ),
-            fileInput(
-              inputId = "file_FDA",
-              label = NULL,
-              buttonLabel = "Browse...",
-              placeholder = "No file selected",
-              accept = c(".csv", ".txt")
-            )
-          ),
-          div(
-            class = "mb-0",
-            div(class = "fw-bold mb-0", " Step 5. Select gene filter mode"),
+div(class = "fw-bold mb-0", " Step 6. Select gene filter mode"),
             radioButtons(
               "filter_mode_bm",
               label = NULL,

@@ -487,12 +487,13 @@ res_plot <- function(job_info, prefix = "res"){
   # logFC 任务被送进 topN 分支，崩在 draw_dr_auc 的 pivot_longer(cols = -TopN)。
   is_fc_mode <- function(df) !identical(tolower(names(df)[1]), "topn")
 
-  if(job_info$yourmodule == "ALL (ES and AUC)" || 
-     grepl("^ALL_FC$", job_info$yourmodule)) {
-    
-res_bm1 <- job_info$yourtable$`AUC` %>% as_tibble()
-res_bm2 <- job_info$yourtable$`ES` %>% as_tibble()
-is_fc <- is_fc_mode(res_bm1)
+if (!is.null(job_info$yourtable$METRICS)) {   # 有 METRICS 表 → 指标视图（新旧作业统一）
+
+# 新契约（2026-10-17）：结果只有 METRICS 表；旧 ALL 结果的 AUC/ES 表仍在但不显示
+# （AUC tab 已退役、旧 ES 已退役）。res_bm1 保留给 bm_data_key 做内容指纹。
+res_bm1 <- if (!is.null(job_info$yourtable$`AUC`)) job_info$yourtable$`AUC` %>% as_tibble() else NULL
+res_bm2 <- if (!is.null(job_info$yourtable$`ES`))  job_info$yourtable$`ES`  %>% as_tibble() else NULL
+is_fc  <- if (!is.null(res_bm1)) is_fc_mode(res_bm1) else FALSE
 # ---- 指标数据只解析一次（很便宜，eager）----
 mtab <- NULL; mets <- character(0); metric_err <- NULL
 if (!is.null(job_info$yourtable$METRICS)) {
@@ -528,10 +529,7 @@ if (length(ls(pic_cache)) > 80) rm(list = ls(pic_cache), envir = pic_cache)  # �
 }
 w
 }
-# ---- 数据表（eager，很便宜）：AUC 表 / ES 表 / 指标汇总表 ----
-DT_res_bm1 <- datatable(res_bm1) %>%
-formatStyle(names(res_bm1)[which.max(res_bm1[1,-1]) + 1],
-backgroundColor = styleEqual(res_bm1[1, which.max(res_bm1[1,-1]) + 1], c('yellow')))
+# ---- 数据表（eager，很便宜）：指标宽表 + Summary 总览表 ----
 DT_overview <- NULL      # Summary 页的跨方法总览表
 if (!is.null(mtab) && length(mets) > 0) {
   DT_overview <- tryCatch({
@@ -554,7 +552,8 @@ DT_metric <- tryCatch({
     w <- w[, c(swp, ssm_cols), drop = FALSE]
     names(w) <- c(swp, unname(disp[ssm_cols]))                # 换成与 AUC/ES 表一致的显示名
     # 列序直接沿用 AUC 表（AUC/ES 表的列序是平台里方法顺序的唯一事实源）
-    w <- w[, c(swp, intersect(names(res_bm1)[-1], names(w)[-1])), drop = FALSE]
+    # 列序 = 平台约定的方法顺序（与 AUC/ES 表一致；不再依赖 res_bm1，新格式作业没有该表）
+    w <- w[, c(swp, intersect(c('XSum','CMap','GSEA','ZhangScore','XCos','PLAGE','QuSAGE'), names(w))), drop = FALSE]
     mcols <- names(w)[-1]                                     # ★ 之后一律用新列名索引
     # 保留 4 位小数：AUC/ES 表在页面上就是这个精度（pROC 输出本身位数就少）
     for (cc in mcols) w[[cc]] <- round(as.numeric(w[[cc]]), 4)
@@ -589,6 +588,15 @@ tabs <- lapply(tab_ids, function(nm) {
       shiny::tags$span(lab, style = "font-weight:600;"),
       actionButton(tid(tip_of(nm)), "Quick Tip", class = "btn-outline-success btn-sm")))
 })
+# ---- anno_type：有效药 / 毒性药（决定区块标题与解释文案；计算在 worker 里已按
+#      "toxic → 分数取反"处理，这里只负责展示语义）----
+atype_raw <- job_info$yourjob$V1[job_info$yourjob$V2 == "Annotation type"]
+anno_type  <- if (length(atype_raw) && nzchar(atype_raw[1])) atype_raw[1] else "effective"
+anno_head  <- if (identical(anno_type, "toxic"))
+  "Toxicity screening (toxic drugs sink to the bottom = your signature is safe)"
+else
+  "Efficacy benchmark (effective drugs enriched at the top)"
+
 # ---- 联动数据区：标题与表都随 tab 切换 ----
 # ---- 三个输出统一用**匿名 render 函数**（与优化前同一模式）----
 # 试过显式 output[[id]] <- ... 在 renderUI 内动态注册，testServer 实测 promise 解析报错；
@@ -604,6 +612,7 @@ tab_inp  <- tid("res_tabs")
 cur_tab <- function() { v <- input[[tab_inp]]; if (is.null(v)) tab_ids[1] else v }
 tagList(
 .job_info_block(job_info),
+shiny::h3(anno_head),
 do.call(shiny::tabsetPanel, c(list(id = tid("res_tabs"), selected = tab_ids[1], type = "pills"), tabs)),
 renderPlotly({ get_pic(cur_tab()) }),   # 惰性：图在渲染时才构建（写成 eager 会退化回 3.5 s 阻塞）
 shiny::br(),

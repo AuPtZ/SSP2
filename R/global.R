@@ -221,6 +221,8 @@ name_for_res_col <- data.frame(
   signature_file1="Signature file name",
   fda_file="Annotation file name for ES",
   ic50_file="Annotation file name for AUC",
+  anno_file="Annotation file name (drug list)",
+  anno_type="Annotation type",
   drug_profile="Drug profile name",
   sub_module="Sub module",
   method_sm1="Signature Search method used",

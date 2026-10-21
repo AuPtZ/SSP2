@@ -509,15 +509,23 @@ process_raw1 <- function(res_ss_raw, drug_info) {
       column_to_rownames(var = "pert_iname") %>%
       mutate(Group = factor(Group, levels = c("Ineffective", "Effective")))
     
+    # ★ 2026-10-16：direction 由 ">" 改为 "<"（真 bug 修复）
+    #   原写法在 Group levels = c("Ineffective","Effective") 下算出的 AUC 恰好是
+    #   `1 - AUROC`：实测真值药平均分数 105.39 vs 非真值 28.91（真药确实排在前），
+    #   但旧代码给出 0.477；改为 "<" 后得 0.523，与不依赖 pROC 的 Mann-Whitney
+    #   直算（0.6528 @ topN=10）一致。旧作业里已存的 AUC 表是反向的，需重算才一致。
     roc(Group ~ Score, res_ss,
         percent = TRUE,
         ci = FALSE,
         plot = FALSE,
         print.auc = TRUE,
-        direction = ">",
+        direction = "<",
         quiet = TRUE)
   }, error = function(e) {
-    # 错误处理：创建一个具有ROC值为0的对象
+    # 错误处理：创建一个具有ROC值为0的对象（保持原有行为，不中断整条扫描）
+    # 2026-10-15：补 message()——此前这里完全静默，导致一次环境相关的失败把整张
+    # AUC 表写成 0，而页面/日志都看不出异常（demo2 曾因此 AUC 全零）。
+    message(sprintf("[process_raw1] AUC 计算失败，回退为 0：%s", conditionMessage(e)))
     list(auc = 0)
   })
   
@@ -592,7 +600,76 @@ gsea1 <- function(reflist, set, w=1) {
 # 散点 size=.8 / alpha=.45：alpha=.10 时 7 种方法颜色几乎认不出来（用户反馈）；
 # .45 既能分辨颜色，又不至于在近千点密集体把曲线糊掉（对标 eLife 2022, Yang et al., Figure 4B）。
 # 注意：最优点虚线仍按原逻辑取单点极值 res_input[1,1]，本次只改视觉，未动推荐逻辑。
-draw_dr_auc <- function(res_input){
+# ---- 散点抽稀（2026-10-15 性能优化）----
+# 每方法散点超过 max_points 时等间隔取样（默认 150）；loess 仍用全数据拟合
+# （geom_smooth 显式传全量 data），曲线形态不变。FC 模式 51 点通常不触发。
+.thin_by_method <- function(df, max_points = 150) {
+  if (is.null(max_points) || max_points <= 0 || nrow(df) == 0) return(df)
+  df %>%
+    dplyr::group_by(method) %>%
+    dplyr::group_modify(function(d, ...) {
+      if (nrow(d) <= max_points) return(d)
+      d[sort(seq(1, nrow(d), by = ceiling(nrow(d) / max_points))), , drop = FALSE]
+    }) %>%
+    dplyr::ungroup()
+}
+
+draw_dr_metrics <- function(curve, metric, max_points = 150) {
+# 指标曲线绘图：x = 扫描自变量（topN 或 logFC 阈值），y = 指标值
+# 水平参考线 = 标签置换零分布（均值虚线 + 95% 分位点线，与扫描自变量无关）
+# 散点抽稀到 max_points/方法，loess 平滑仍用全量数据（long_full），曲线形态不变
+sweep_col <- names(curve)[1]
+d  <- curve[curve$Metric == metric, , drop = FALSE]
+dp <- d[, c(sweep_col, "Method", "Value")] %>%
+tidyr::pivot_wider(names_from = Method, values_from = Value) %>%
+dplyr::mutate(dplyr::across(-1, ~ as.numeric(.)))
+long_full <- dp %>% tidyr::pivot_longer(-1, names_to = "method", values_to = "Value") %>%
+  dplyr::mutate(method = unname(.bm_disp[method]))    # 显示名与 AUC/ES 表一致
+long <- .thin_by_method(long_full, max_points)
+# 零分布不再画进图里：95% 参考带会把 y 轴撑得很宽（如 AUROC 的 0.39-0.62），
+# 把实际数据压成一条窄带。零分布数值保留在图**下方数据表**的 null_mean / null_q975
+# 两列，显著性判据在 Summary 页（置换 p 值）。
+ggplot(long, aes(x = .data[[sweep_col]], y = Value)) +
+geom_point(aes(color = method), size = 0.8, alpha = 0.45) +
+geom_smooth(data = long_full, aes(color = method), method = "loess", span = 0.75,
+se = FALSE, linewidth = 0.8) +
+    labs(title = .bm_metric_label(metric), x = sweep_col, y = .bm_metric_label(metric),
+         subtitle = .bm_peak_label(long_full, sweep_col, "Value", sweep_col)) +
+    theme_test() + ggsci::scale_color_npg() +
+    theme(plot.subtitle = element_text(size = 9, colour = "grey30"))
+}
+# ---- 各方法的峰值标记（2026-10-16 方案 B）----
+# 用"每条曲线自己的最高点"取代原来贯穿全图的竖线：竖线既与参考线视觉冲突，
+# 又只能代表全表最大值那一个点，而各方法的最优 TopN/logFC 并不相同。
+.bm_peaks <- function(df, xcol, ycol) {
+  df %>% dplyr::group_by(method) %>%
+    dplyr::slice_max(order_by = .data[[ycol]], n = 1, with_ties = FALSE) %>%
+    dplyr::ungroup()
+}
+
+# 图上方的小字：整体最优（哪个方法、在哪个扫描点、值多少）
+.bm_peak_label <- function(df, xcol, ycol, xname) {
+  p <- .bm_peaks(df, xcol, ycol)
+  if (!nrow(p)) return(NULL)
+  b <- p[which.max(p[[ycol]]), ]
+  mname <- as.character(b$method)
+  if (mname %in% names(.bm_disp)) mname <- unname(.bm_disp[mname])
+  sprintf("Best: %s at %s = %g  (%s = %.3f)", mname,
+          xname, b[[xcol]], ycol, b[[ycol]])
+}
+
+# ---- 指标显示名（内部键 -> 界面标签）----
+# ES_rank 在界面上就叫 ES：它就是 GSEA 原文的未加权 ES，旧的 |score| 加权 ES
+# （零分布偏正 +0.26）已退役，没必要再带 _rank 后缀。内部键保持不变，
+# 以免影响 METRICS 结果表、缓存键与旧作业的兼容。
+.bm_metric_label <- function(x) {
+  # 内部键 -> 界面标签：ES_rank 就是未加权 ES（旧加权 ES 已退役）；
+  # RecallAtK / EFpct 用文献里的标准写法（K 默认 20 个药、pct 默认 5%）。
+  m <- c(ES_rank = "ES", RecallAtK = "Recall@K", EFpct = "EF@5%")
+  ifelse(x %in% names(m), unname(m[x]), x)
+}
+
+draw_dr_auc <- function(res_input, max_points = 150){
   
   res_auc <- res_input %>%  as_tibble() %>% pivot_longer(
     cols = -TopN,
@@ -603,19 +680,99 @@ draw_dr_auc <- function(res_input){
            method = factor(method, levels = c("CMap", "GSEA", "XCos","XSum","ZhangScore","PLAGE","QuSAGE")),
            )
   
-  first_row_value <- res_input[1,1] %>% pull()
-  
-  p1 <- ggplot(data=res_auc, mapping = aes(x=TopN, y=`AUC`)) +
-    geom_point(aes(color = method), size = 0.8, alpha = 0.45) + 
-    geom_vline(xintercept = first_row_value, linetype="dashed", color = "black") + 
-    geom_smooth(aes(color = method), method = "loess", span = 0.75,
+  res_pts <- .thin_by_method(res_auc, max_points)
+  p1 <- ggplot(data=res_pts, mapping = aes(x=TopN, y=`AUC`)) +
+    geom_point(aes(color = method), size = 0.8, alpha = 0.45) +
+    geom_smooth(data = res_auc, aes(color = method), method = "loess", span = 0.75,
                 se = FALSE, linewidth = 0.8) +
-    theme_test() + ggsci::scale_color_npg()
+    labs(subtitle = .bm_peak_label(res_auc, "TopN", "AUC", "TopN")) +
+    theme_test() + ggsci::scale_color_npg() +
+    theme(plot.subtitle = element_text(size = 9, colour = "grey30"))
   
   return(p1)
 }
 
-draw_dr_es <- function(res_input){
+# =============================================================================
+# Summary 页：方法 × 指标 总览（2026-10-16）
+#
+#   metrics_overview()  长表：每个 (Method, Metric) 的 median / max / 零分布 /
+#                       相对零分布位置 / 是否显著
+#   draw_dr_summary()   热图：填色 = 相对零分布位置（1.0 = 恰好压到置换零分布 95% 分位），
+#                       格内文字 = 原始 median，* = median 超过零分布 95% 分位
+#
+# 为什么颜色用"相对零分布"而非原始值：5 个指标量纲完全不同（AUROC≈0.5、EF 可到 20、
+# ES_rank 跨负正），归一化后才能用一张图横向比较"谁比随机好多少"。
+#
+# ★ 显著性来自结果表里的**逐点置换 p 值** p_null（见 R/Utils_BM_metrics.R 的
+#   calc_benchmark_metrics）：frac_p05 = 过半 sweep 点 p < 0.05 的比例，p_best = 最好的 p。
+#   不用"median > null_q975"是因为离散指标（Recall@K 只有 k/真值药数 个取值）的 95% 分位
+#   恰好落在可达取值上，严格大于号会把"刚好达标"判成不显著；p 值按 P(null >= obs) 计入并列。
+#   旧结果文件没有 p_null 列时自动退回保守判据（见 has_p 分支）。
+# =============================================================================
+.bm_disp <- c(SS_Xsum = "XSum", SS_CMap = "CMap", SS_GSEA = "GSEA",
+              SS_ZhangScore = "ZhangScore", SS_XCos = "XCos",
+              SS_PLAGE = "PLAGE", SS_QuSAGE = "QuSAGE")
+
+metrics_overview <- function(curve) {
+  if (is.null(curve) || nrow(curve) == 0) return(NULL)
+  d <- as.data.frame(curve)
+  d <- d[d$Metric != "ES_abs", , drop = FALSE]        # 退役对照（无零分布）不进总览
+  if (!nrow(d)) return(NULL)
+  has_p <- "p_null" %in% names(d)          # 旧结果文件没有 p 列 → 退回保守判据
+  parts <- lapply(split(d, list(d$Method, d$Metric), drop = TRUE), function(x) {
+    if (!nrow(x)) return(NULL)
+    nmv <- unique(x$NullMean)[1]; q <- unique(x$NullQ975)[1]
+    den <- q - nmv
+    med <- stats::median(x$Value, na.rm = TRUE)
+    p_ok <- if (has_p) !all(is.na(x$p_null)) else FALSE
+    data.frame(Method    = unname(.bm_disp[unique(x$Method)[1]]),
+               Metric    = unique(x$Metric)[1],
+               median    = med,
+               max       = max(x$Value, na.rm = TRUE),
+               null_mean = nmv,
+               null_q975 = q,
+               # 1.0 = 恰好等于置换零分布 95% 分位；> 1 表示优于随机
+               rel_null  = if (is.na(den) || den <= 0) NA_real_ else (med - nmv) / den,
+               # 逐点置换 p（计入并列）：最小 p = 扫描里最好的那个签名大小
+               p_best    = if (p_ok) min(x$p_null, na.rm = TRUE) else NA_real_,
+               # 过半 sweep 点显著优于随机的比例 —— 主判据（比"是否超过 Q975"可靠：
+               # 离散指标的 Q975 恰好落在可达取值上时，严格大于号会把"刚好达标"判否）
+               frac_p05  = if (p_ok) mean(x$p_null < 0.05, na.rm = TRUE) else NA_real_,
+               sig       = if (p_ok) isTRUE(mean(x$p_null < 0.05, na.rm = TRUE) >= 0.5)
+                           else isTRUE(med > q),
+               stringsAsFactors = FALSE)
+  })
+  out <- do.call(rbind, parts)
+  if (is.null(out)) return(NULL)
+  rownames(out) <- NULL
+  out$Metric <- .bm_metric_label(out$Metric)   # 界面显示名（ES / Recall@K / EF@5%）
+  out[order(out$Metric, -out$rel_null), ]
+}
+
+draw_dr_summary <- function(curve) {
+  s <- metrics_overview(curve)
+  if (is.null(s) || !nrow(s)) return(NULL)
+  ord <- .bm_metric_label(c("ES_rank", "AUPRC", "RecallAtK", "EFpct", "AUROC"))
+  s$Method <- factor(s$Method, levels = rev(sort(unique(s$Method))))
+  s$Metric <- factor(s$Metric, levels = c(ord, setdiff(unique(as.character(s$Metric)), ord)))
+  s$lab <- sprintf("%.3f%s", s$median, ifelse(s$sig, " *", ""))
+  ggplot(s, aes(x = Metric, y = Method, fill = rel_null)) +
+    geom_tile(color = "white", linewidth = 0.6) +
+    geom_text(aes(label = lab), size = 3.1) +
+    scale_fill_gradient2(low = "#2166AC", mid = "#F7F7F7", high = "#B2182B",
+                         midpoint = 1, limits = c(0, 2),
+                         name = "vs permutation null\n(1.0 = null 95% line)") +
+    theme_minimal(base_size = 11) +
+    theme(panel.grid = element_blank(), axis.title = element_blank(),
+          plot.title = element_text(size = 12, face = "bold"),
+          plot.caption = element_text(size = 8, colour = "grey35"),
+          plot.margin = margin(8, 8, 4, 8)) +
+    labs(title = "Benchmark overview: method x metric",
+         caption = paste0("Tile colour = (median - null mean) / (null 95% - null mean); 1.0 = at the 95% permutation line.\n",
+                           "Cell text = raw median;  * = significant (permutation p < 0.05) in more than half of the swept signature sizes."))
+}
+
+draw_dr_es <- function(res_input, max_points = 150){
   res_es <- res_input %>% as_tibble() %>% pivot_longer(
     cols = -TopN,
     names_to = "method",
@@ -626,14 +783,14 @@ draw_dr_es <- function(res_input){
     )
 
   
-  first_row_value <- res_input[1,1] %>% pull()
-  
-  p2 <- ggplot(data=res_es, mapping = aes(x=TopN, y=`ES`)) +
-    geom_point(aes(color = method), size = 0.8, alpha = 0.45) + 
-    geom_vline(xintercept = first_row_value, linetype="dashed", color = "black") + 
-    geom_smooth(aes(color = method), method = "loess", span = 0.75,
+  res_pts <- .thin_by_method(res_es, max_points)
+  p2 <- ggplot(data=res_pts, mapping = aes(x=TopN, y=`ES`)) +
+    geom_point(aes(color = method), size = 0.8, alpha = 0.45) +
+    geom_smooth(data = res_es, aes(color = method), method = "loess", span = 0.75,
                 se = FALSE, linewidth = 0.8) +
-    theme_test() + ggsci::scale_color_npg()
+    labs(subtitle = .bm_peak_label(res_es, "TopN", "ES", "TopN")) +
+    theme_test() + ggsci::scale_color_npg() +
+    theme(plot.subtitle = element_text(size = 9, colour = "grey30"))
   return(p2)
 }
 
@@ -656,38 +813,38 @@ get_fcth <- function(sig_input) {
 }
 
 # FC 版 AUC 绘图
-draw_dr_auc_fc <- function(res_input) {
+draw_dr_auc_fc <- function(res_input, max_points = 150) {
   res_auc <- res_input %>% as_tibble() %>% pivot_longer(
     cols = -logFC, names_to = "method", values_to = "AUC") %>%
     mutate(AUC = as.numeric(AUC), logFC = as.numeric(logFC),
            method = factor(method, levels = c("CMap","GSEA","XCos","XSum","ZhangScore","PLAGE","QuSAGE")))
 
-  first_val <- res_input[1, 1] %>% pull()
-
-  ggplot(res_auc, aes(x = logFC, y = AUC)) +
+  res_pts <- .thin_by_method(res_auc, max_points)
+  ggplot(res_pts, aes(x = logFC, y = AUC)) +
     geom_point(aes(color = method), size = 0.8, alpha = 0.45) +
-    geom_vline(xintercept = first_val, linetype = "dashed", color = "black") +
-    geom_smooth(aes(color = method), method = "loess", span = 0.75,
+    geom_smooth(data = res_auc, aes(color = method), method = "loess", span = 0.75,
                 se = FALSE, linewidth = 0.8) +
+    labs(subtitle = .bm_peak_label(res_auc, "logFC", "AUC", "|log2FC|")) +
     theme_test() + ggsci::scale_color_npg() +
+    theme(plot.subtitle = element_text(size = 9, colour = "grey30")) +
     xlab("|log2FC| threshold")
 }
 
 # FC 版 ES 绘图
-draw_dr_es_fc <- function(res_input) {
+draw_dr_es_fc <- function(res_input, max_points = 150) {
   res_es <- res_input %>% as_tibble() %>% pivot_longer(
     cols = -logFC, names_to = "method", values_to = "ES") %>%
     mutate(ES = as.numeric(ES), logFC = as.numeric(logFC),
            method = factor(method, levels = c("CMap","GSEA","XCos","XSum","ZhangScore","PLAGE","QuSAGE")))
 
-  first_val <- res_input[1, 1] %>% pull()
-
-  ggplot(res_es, aes(x = logFC, y = ES)) +
+  res_pts <- .thin_by_method(res_es, max_points)
+  ggplot(res_pts, aes(x = logFC, y = ES)) +
     geom_point(aes(color = method), size = 0.8, alpha = 0.45) +
-    geom_vline(xintercept = first_val, linetype = "dashed", color = "black") +
-    geom_smooth(aes(color = method), method = "loess", span = 0.75,
+    geom_smooth(data = res_es, aes(color = method), method = "loess", span = 0.75,
                 se = FALSE, linewidth = 0.8) +
+    labs(subtitle = .bm_peak_label(res_es, "logFC", "ES", "|log2FC|")) +
     theme_test() + ggsci::scale_color_npg() +
+    theme(plot.subtitle = element_text(size = 9, colour = "grey30")) +
     xlab("|log2FC| threshold")
 }
 

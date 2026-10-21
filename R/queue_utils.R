@@ -306,6 +306,11 @@ build_df1 <- function(jobid, submitted_time, module, sub_module, table_num, meta
       base(drug_profile = meta$sel_experiment, method_bm = meta$sel_ss_names,
            signature_file1 = meta$file_sig_name, fda_file = meta$file_FDA_name,
            sub_module = sub_module, filter_mode = fm, filter_value = fv)
+    } else if (grepl("^METRICS", sub_module)) {   # 2026-10-17 新契约
+      base(drug_profile = meta$sel_experiment, method_bm = meta$sel_ss_names,
+           signature_file1 = meta$file_sig_name, anno_file = meta$file_anno_name,
+           anno_type = meta$anno_type, sub_module = sub_module,
+           filter_mode = fm, filter_value = fv)
     } else { # ALL (ES and AUC)
       base(drug_profile = meta$sel_experiment, method_bm = meta$sel_ss_names,
            signature_file1 = meta$file_sig_name, fda_file = meta$file_FDA_name,
@@ -360,7 +365,13 @@ write_result_from_meta <- function(jobid, submitted_time, module, sub_module,
   RSQLite::dbExecute(con, "BEGIN IMMEDIATE;")
   ok <- tryCatch({
     created <- .ensure_res_cols(con, df1)
-    if (table_num == 2) {
+    if (table_num == 3) {
+      RSQLite::dbWriteTable(con, paste0(jobid, "_AUC"),     table_res[["AUC"]])
+      RSQLite::dbWriteTable(con, paste0(jobid, "_ES"),      table_res[["ES"]])
+      RSQLite::dbWriteTable(con, paste0(jobid, "_METRICS"), table_res[["METRICS"]])
+    } else if (table_num == 4) {   # 仅 METRICS（2026-10-17 新契约）
+      RSQLite::dbWriteTable(con, paste0(jobid, "_METRICS"), table_res[["METRICS"]])
+    } else if (table_num == 2) {
       RSQLite::dbWriteTable(con, paste0(jobid, "_AUC"), table_res[["AUC"]])
       RSQLite::dbWriteTable(con, paste0(jobid, "_ES"),  table_res[["ES"]])
     } else {
@@ -391,23 +402,31 @@ run_job <- function(job) {
   on.exit({ clear_job_progress(j$jobid); set_job_context(NULL) }, add = TRUE)
 
   if (j$module == "Benchmark") {
-    res_bm <- get_benchmark(
-      IC50_drug    = p$IC50_drug,
-      FDA_drug     = p$FDA_drug,
-      i.need.logfc = p$i.need.logfc,
-      sel_exp      = p$sel_exp,
-      sel_ss       = p$sel_ss,
-      filter_mode  = p$filter_mode
-    )
-    if (length(res_bm) == 3) {
-      write_result_from_meta(j$jobid, j$submitted_time, "Benchmark",
-        "ALL (ES and AUC)", 2, list(AUC = res_bm[[1]], ES = res_bm[[2]]), meta)
-    } else if (length(res_bm) == 2) {
-      write_result_from_meta(j$jobid, j$submitted_time, "Benchmark",
-        res_bm[[2]], 1, res_bm[[1]], meta)
-    } else {
-      stop("Benchmark returned unexpected result length: ", length(res_bm))
+    # ---- 2026-10-17 重构：只计算新指标（旧 AUC/ES 两遍扫描已取消，用户拍板）----
+    # 真值 = 上传的药物注释（单列 Compound_name）；毒性模式（anno_type="toxic"）
+    # 在指标内部把分数取反（见 R/Utils_BM_metrics.R 的 metrics_sets_i），
+    # 5 个指标统一按"毒性药沉底 = 好"解读。
+    # 旧格式作业兼容：params 里没有 drug_anno 时回退到 FDA/IC50 清单。
+    anno_type <- if (!is.null(p$anno_type) && !is.na(p$anno_type)) p$anno_type else "effective"
+    anno_df   <- if (!is.null(p$drug_anno)) p$drug_anno else p$FDA_drug
+    if (is.null(anno_df) && !is.null(p$IC50_drug) &&
+        "Group" %in% names(p$IC50_drug)) {
+      anno_df   <- p$IC50_drug[p$IC50_drug$Group == "Effective", , drop = FALSE]
+      anno_type <- "effective"
     }
+    if (is.null(anno_df) || is.null(anno_df[["Compound_name"]]))
+      stop("Benchmark: no drug annotation found in job params")
+    metrics_tab <- tryCatch(
+      calc_benchmark_metrics(sel_exp = p$sel_exp, sig_input = p$i.need.logfc,
+                             drug_sig = anno_df[["Compound_name"]], get_ss = p$sel_ss,
+                             filter_mode = p$filter_mode, cores = get_cores(),
+                             anno_type = anno_type),
+      error = function(e) { message("[metrics] failed: ", conditionMessage(e)); NULL })
+    if (is.null(metrics_tab))
+      stop("Benchmark metrics computation returned nothing (see worker log)")
+    tabs <- list(METRICS = metrics_tab)
+    write_result_from_meta(j$jobid, j$submitted_time, "Benchmark",
+      "METRICS", 4, tabs, meta)
 
   } else if (j$module == "Application") {
     res_sm <- get_single_method(

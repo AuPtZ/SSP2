@@ -79,8 +79,6 @@ observeEvent(input$reset, {
   reset("bm_input")
   
   # system(paste0("rm ",input$file_sig$datapath))
-  # system(paste0("rm ",input$file_IC50$datapath))
-  # system(paste0("rm ",input$file_FDA$datapath))
   # 
   # print(input$file_sig)
   output$display_bm <- renderUI(initial_bm)
@@ -116,51 +114,49 @@ observeEvent(input$runBM, {
       output$display_bm <- renderUI(initial_bm)
     }
     
-    #### 校验输入（进度显示见 output$bm_progress，由轮询 worker 进度驱动）
-    req(length(input$sel_ss)>1)
-    req(!(is.null(input$file_IC50) & is.null(input$file_FDA)))
-    req(!is.null(input$file_sig))
-    
-    IC50_drug = input$file_IC50$datapath
-    FDA_drug = input$file_FDA$datapath
-    i.need.logfc = input$file_sig$datapath
-    
-    # 使用一个trick读取IC50,FDA和logfc，如果没有的话，那就认为为NULL，如果有的话，那就读取
-    if(!is.null(IC50_drug)){
-      IC50_drug <- rio::import(input$file_IC50$datapath)
-    }
-    if(!is.null(FDA_drug)){
-      FDA_drug <- rio::import(input$file_FDA$datapath)
-    }
-    if(!is.null(i.need.logfc)){
-      i.need.logfc <- rio::import(input$file_sig$datapath) %>% dplyr::select(c("Gene","log2FC"))
-    }
-    
-    
-    sel_exp = input$sel_experiment
-    sel_ss = input$sel_ss
-    filter_mode = input$filter_mode_bm
-    
+#### 校验输入（进度显示见 output$bm_progress，由轮询 worker 进度驱动）
+req(length(input$sel_ss)>1)
+req(!is.null(input$file_anno))
+req(!is.null(input$file_sig))
 
-    # === 方案C：把计算入队，由独立 worker 执行；前端轮询 job_queue 状态显示 ===
-    nz <- function(x) if (is.null(x) || length(x) == 0) NA_character_ else x
-    meta <- list(
-      sel_experiment = sel_exp,
-      sel_ss_names   = paste0(find_original_names(sel_ss), collapse = ", "),
-      file_sig_name  = nz(input$file_sig$name),
-      file_IC50_name = nz(input$file_IC50$name),
-      file_FDA_name  = nz(input$file_FDA$name),
-      filter_mode    = filter_mode,
-      filter_value   = if (filter_mode == "logFC") input$sel_fc_sm else input$sel_topn_sm
-    )
-    enqueue_job(
-      jobid = jobid_bm, module = "Benchmark", sub_module = "ALL (ES and AUC)",
-      submitted_time = submitted_time,
-      params = list(IC50_drug = IC50_drug, FDA_drug = FDA_drug,
-                    i.need.logfc = i.need.logfc, sel_exp = sel_exp,
-                    sel_ss = sel_ss, filter_mode = filter_mode),
-      meta = meta
-    )
+drug_anno <- rio::import(input$file_anno$datapath)
+i.need.logfc = input$file_sig$datapath
+if(!is.null(i.need.logfc)){
+i.need.logfc <- rio::import(input$file_sig$datapath) %>% dplyr::select(c("Gene","log2FC"))
+}
+# 注释格式校验：单列 Compound_name（给明确报错，而不是让 worker 静默失败）
+if (!"Compound_name" %in% names(drug_anno)) {
+shiny::showNotification(
+"The drug annotation must be a one-column table with header Compound_name.",
+type = "error", duration = 10)
+return()
+}
+
+anno_type = input$anno_type
+sel_exp = input$sel_experiment
+sel_ss = input$sel_ss
+filter_mode = input$filter_mode_bm
+
+
+# === 方案C：把计算入队，由独立 worker 执行；前端轮询 job_queue 状态显示 ===
+nz <- function(x) if (is.null(x) || length(x) == 0) NA_character_ else x
+meta <- list(
+sel_experiment = sel_exp,
+sel_ss_names   = paste0(find_original_names(sel_ss), collapse = ", "),
+file_sig_name  = nz(input$file_sig$name),
+file_anno_name = nz(input$file_anno$name),
+anno_type      = anno_type,
+filter_mode    = filter_mode,
+filter_value   = if (filter_mode == "logFC") input$sel_fc_sm else input$sel_topn_sm
+)
+enqueue_job(
+jobid = jobid_bm, module = "Benchmark", sub_module = "METRICS",
+submitted_time = submitted_time,
+params = list(drug_anno = drug_anno, anno_type = anno_type,
+i.need.logfc = i.need.logfc, sel_exp = sel_exp,
+sel_ss = sel_ss, filter_mode = filter_mode),
+meta = meta
+)
     rv_bm_job(jobid_bm)
 
     output$display_bm <- renderUI({ ## renderUI 
@@ -210,15 +206,15 @@ judge_bm <- function(){
     return(F)
   }
   
-  if(is.null(input$file_IC50) & is.null(input$file_FDA)){
-    sendSweetAlert(
-      session = session,
-      title = "Error...",
-      text = "Please upload at least 1 annotation file!",
-      type = "error"
-    )
-    return(F)
-  }
+if(is.null(input$file_anno)){
+sendSweetAlert(
+session = session,
+title = "Error...",
+text = "Please upload the drug annotation file (a one-column drug list)!",
+type = "error"
+)
+return(F)
+}
   
   if(length(input$sel_ss)<2){
     sendSweetAlert(
@@ -246,42 +242,19 @@ judge_bm <- function(){
     }
   }
   
-  # 读取文件以后判定
-  if(!is.null(input$file_FDA)){
-    fda1 <-  rio::import(input$file_FDA$datapath)
-    if(!all(c("Compound_name" ) %in% colnames(fda1))){
-      sendSweetAlert(
-        session = session,
-        title = "Error...",
-        text = 'Please make sure your FDA table contains column "Compound_name" !',
-        type = "error"
-      )
-      return(F)
-    }
-  }
-  
-  if(!is.null(input$file_IC50)){
-    ic501 <-  rio::import(input$file_IC50$datapath)
-    if(!all(c("Compound_name","Group" ) %in% colnames(ic501))){
-      sendSweetAlert(
-        session = session,
-        title = "Error...",
-        text = 'Please make sure your AUC table contains column "Compound_name" and "Group" !',
-        type = "error"
-      )
-      return(F)
-    }
-    
-    if(!all(sort(unique(ic501$Group)) == c("Effective","Ineffective")) ){
-      sendSweetAlert(
-        session = session,
-        title = "Error...",
-        text = 'Please make sure your AUC table column "Group" only contain "Effective" and "Ineffective" !',
-        type = "error"
-      )
-      return(F)
-    }
-  }
+# 读取文件以后判定
+if(!is.null(input$file_anno)){
+anno1 <-  rio::import(input$file_anno$datapath)
+if(!all(c("Compound_name" ) %in% colnames(anno1))){
+sendSweetAlert(
+session = session,
+title = "Error...",
+text = 'Please make sure your drug annotation contains column "Compound_name" !',
+type = "error"
+)
+return(F)
+}
+}
   
   
   

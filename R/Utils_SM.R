@@ -206,8 +206,8 @@ get_ss_all_res_i <- function(refMatrix,sig_input,funcname_mul,topn,direct,
   get_rra <- function(res_order,funcname_one,direct = "Down",only.name =F){
     
     ll <- data.frame(
-      name = res_mul[[res_order]] %>% arrange(desc(abs(Score))) %>%
-        dplyr::filter(Direction == direct) %>% select(name) %>% unlist(use.names = F),
+      name = res_mul[[res_order]] %>% dplyr::arrange(dplyr::desc(abs(Score))) %>%
+        dplyr::filter(Direction == direct) %>% dplyr::select(name) %>% unlist(use.names = F),
       method = funcname_one
     )
     
