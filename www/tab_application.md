@@ -1,55 +1,71 @@
-### Welcome to the Application module! 
-In this module, you can apply Signature Search methods (SSMs) to query promising drugs based on the oncogenic signature.   
-**A oncogenic signature** is a gene list header with **Gene** and **Log2FC**. It typically consists of differentially expressed genes derived from sequencing samples of cell or animal experiments, or patient cohorts, such as GEO, TCGA and ICGC.    
-The oncogenic signature should contain **at least 10 genes exhibiting a log2FC > 0 and 10 genes exhibiting a log2FC < 0**. Notably, the genes provided by user should be in the format of gene symbol and are **statistically significant (adjust p-value < 0.05 or FDR < 0.05)**, ensuring the significance of further analysis. 
+### Application: query promising drugs
 
-<div style="padding: 10px; text-align: center;">
-<img src="imgbm1.2.png" width = "30%" height = "30%" />
+In this module you apply signature-search methods (SSMs) to a pharmacotranscriptomic
+dataset (PTD), and SSP ranks its drugs by how well they reverse your oncogenic signature.
+
+**An oncogenic signature** is a two-column table with header `Gene` and `log2FC`. It is
+usually built from the differentially expressed genes of cell / animal experiments or
+patient cohorts (GEO, TCGA, ICGC ...). It should contain **at least 10 genes with
+log2FC > 0 and 10 genes with log2FC < 0**, use gene symbols, and be
+**statistically significant (adjust p-value < 0.05 or FDR < 0.05)**.
+
+If your genes are given in another identifier format (EntrezID, Ensembl, UniProt,
+Gene name ...), convert them in the **Converter** page first - only genes present in the
+PTDs are used.
+
+#### Three query modes
+
+**1. Single method.** The conventional way: one signature, one SSM.
+
+<div style="padding: 6px; text-align: center;">
+<img src="imgsm_new_single.png" width="36%" />
 </div>
 
-Should your oncogenic signature contain genes formatted with alternative identifiers (such as EntrezID, Ensembl, UniProt, Gene name, etc.), proceed to the Converter page for the necessary conversion.    
+**2. SS_cross.** Your **two** signatures are queried together (optionally with two SSMs) and
+the drugs are ranked by the summed score (Score~Sum~). Use it when two signatures should
+agree, e.g. two datasets of the same cancer type; drugs ranked high in both are the
+consistent hits.
 
-Below are three approaches to identify promising drugs:    
-
-<div style="padding: 10px; text-align: center;">
-<img src="imgsm1.png" width = "50%" height = "50%" />
-</div>  
-
-As shown in the picture:   
-1. **Single method** : This approach queries drugs using a single SSM, adhering to the conventional method. Typically, a filter for differentially expressed genes (DEGs) is applied using abs(log2FC) > ±1.  
-2. **SS_cross** : This approach queries drugs using two signatures and ranks them based on overall scores (Score~Sum~). The purpose of SS_cross is to identify drugs that exhibit same strong response across two distinct oncogenic signatures. This aligns with the current practice in omics data mining, where findings typically require validation across multiple datasets.    
-3. **SS_all** : This approach queries drugs across various SSMs and ranks them uniformly (either up or down) using Robust Rank Aggregation (RRA). SS_All considers all selected SSMs to identify the **greatest common drugs**.
-
-**Each approach entails distinct steps:**  
-
-For the **Single Method**, the following four steps are required:  
-① Choose the desired SSM,  
-② Select a pharmacotranscriptomic dataset (PTD),  
-③ Upload the **signature file (header with 'Gene' and 'log2FC')**, and  
-④ Determine the number of top genes (topN) to utilize, with guidance provided by the Benchmark module.  
-
-<div style="padding: 10px; text-align: center;">
-<img src="imgsm2.png" width = "70%" height = "70%" />
+<div style="padding: 6px; text-align: center;">
+<img src="imgsm_new_cross.png" width="38%" />
 </div>
 
-For **SS_cross**, step ③ differs:  
-Two oncogenic signature files, along with their respective names, are necessary; the name of the first signature corresponds to the X-axis, while the second corresponds to the Y-axis in the resulting figure.     
+**3. SS_all.** Drugs are queried with **several SSMs** and the rankings are aggregated with
+Robust Rank Aggregation (RRA), which reports the greatest common drugs of all selected
+methods. Select at least two methods - more methods mean longer runtime (a full selection
+takes 20~40 min). For oncogenic signatures keep the direction **down**; other signature
+types are not recommended.
 
-<div style="padding: 10px; text-align: center;">
-<img src="imgsm3.png" width = "70%" height = "70%" />
+<div style="padding: 6px; text-align: center;">
+<img src="imgsm_new_all.png" width="38%" />
 </div>
 
-For **SS_all**, step ① varies:    
-You may choose a selection of SSMs and a ranking direction for the drugs. Generally, if an oncogenic signature is uploaded, select **'down'**.Other type signature is not recommended. **For more details, please refer to the help page, specifically Question 8.**    
+#### Steps in the left panel
 
-<div style="padding: 10px; text-align: center;">
-<img src="imgsm4.png" width = "70%" height = "70%" />
+**Step 1.** Select the query mode (Single method / SS_cross / SS_all).
+
+**Step 2.** Select the SSM(s): one for Single method and SS_cross, at least two for SS_all.
+
+**Step 3.** Select the PTD - data source, tissue and a specific dataset (cell line, dose,
+number of drugs). Datasets with more drugs and a tissue close to your cancer of interest
+are usually a better choice.
+
+**Step 4.** Upload the signature file(s). SS_cross asks for two signatures, and the name of
+signature 1 labels the X-axis while signature 2 labels the Y-axis of the result figure.
+
+**Step 5.** Set the gene filter: `topN` (default 150, guided by the Benchmark module) or a
+|log2FC| threshold.
+
+<div style="padding: 6px; text-align: center;">
+<img src="imgsm_new_dataset.png" width="38%" />
 </div>
 
-Ultimately, initiate the process by clicking 'Run,' which will generate a job ID (**jobid**) prefixed with 'APP'. Results are typically available within approximately 15~30 minutes, and a 'Quick Tip' will be provided to assist with result interpretation. Alternatively, you may close the page and retrieve the job ID in the **Job Center**  for future result retrieval.   
+Then click **Run**. A job ID prefixed with `APP` is created; a full job usually takes
+15~30 min and a **Quick Tip** appears with the result. You may close the page and fetch the
+result later in the **Job Center** by its job ID.
 
-<div style="padding: 10px; text-align: center;">
-<img src="imgsm5.png" width = "40%" height = "40%" />
+<div style="padding: 6px; text-align: center;">
+<img src="imgsm_new_run.png" width="36%" />
 </div>
 
-For more information, please visit the **Info-Help** page.  
+For more information, please visit the **Info-Help** page.

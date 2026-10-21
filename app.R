@@ -23,7 +23,7 @@ ui <- page_navbar(
   lang = "en",
   theme = bs_theme(
     version = 5,
-    preset = "journal" ,
+    preset = "flatly" ,
     # heading_font = font_google("News Cycle"),
     base_font = font_google("Roboto Condensed")
   ),
@@ -134,7 +134,7 @@ ui <- page_navbar(
             # Module cards
             h3("Get started", class = "mt-0 mb-0"),
             layout_column_wrap(
-              width = 1 / 3,
+              width = 1 / 4,
               fill = FALSE,
               card(
                 card_header(bs_icon("graph-up"), " Benchmark"),
@@ -155,17 +155,6 @@ ui <- page_navbar(
                   p("Drugs repurposing using Signature Search methods"),
                   actionButton(
                     "jump_to_sm",
-                    "Open",
-                    class = "btn-primary w-100"
-                  )
-                )
-              ),
-              card(
-                card_header(bs_icon("tags"), " Annotation"),
-                card_body(
-                  p("Obtain preliminary annotation of Drugs from GSDC and DRH"),
-                  actionButton(
-                    "jump_to_an",
                     "Open",
                     class = "btn-primary w-100"
                   )
@@ -226,23 +215,20 @@ ui <- page_navbar(
         id = "bm_input",
         width = 380,
         title = NULL,
-        tagList(
-          div(
-            class = "mb-0",
-            div(
-              class = "fw-bold mb-0",
-              step_pop(
-                " Step 1. Select a pharmacotranscriptomic dataset",
-                paste(
-                  "SSP contains datasets of 155 tumor cell lines at ",
-                  as.character(strong(
-                    "different concentration and treat time."
-                  )),
-                  "<br>In general, we recommend user to select a dataset with more drugs and highly related to cancer of interest.",
-                  "<br> The blank annotation can be obtained by clicking the button provided below. Once filled out, the annotation file could be used in step 4."
-                )
+        open = "always",
+        card(
+          card_header(class = "bg-transparent pb-0", div(class = "fw-bold",
+            step_pop(
+              " \u2460 Select a dataset",
+              paste(
+                "SSP contains datasets of 155 tumor cell lines at ",
+                as.character(strong("different concentration and treat time.")),
+                "<br>In general, we recommend user to select a dataset with more drugs and highly related to cancer of interest.",
+                "<br> The blank annotation can be obtained by clicking the button provided below. Once filled out, the annotation file could be used in step 3."
               )
-            ),
+            )
+          )),
+          card_body(
             pickerInput(
               "sel_source",
               label = "Select data source",
@@ -267,95 +253,73 @@ ui <- page_navbar(
             downloadButton(
               "dl_drug_ann_bm",
               "Download Blank Annotation",
-              class = "btn-success"
+              class = "btn-success w-100"
             )
-          ),
-          div(
-            class = "mb-0",
-            div(
-              class = "fw-bold mb-0",
-              step_pop(
-                " Step 2. Select Signature Search methods",
-                paste(
-                  "Please select ",
-                  as.character(strong("at least TWO")),
-                  "methods for benchmark. More methods mean more time.",
-                  as.character(strong(
-                    "The time for a full-seleted job is 15~30 mins"
-                  ))
-                )
+          )
+        ),
+        card(
+          card_header(class = "bg-transparent pb-0", div(class = "fw-bold",
+            step_pop(
+              " \u2461 Signature & drug annotation",
+              paste(
+                "Step 2: upload an oncogenic signature (Gene + log2FC). A",
+                a(href = "demo/signature.txt", "demo signature file"),
+                "is provided.",
+                "<br>Step 3: upload a one-column drug list (header: Compound_name) - the drugs you want the signature search to retrieve. A",
+                a(href = "demo/drug_annotation_ES.txt", "demo drug annotation"),
+                "is provided. Then choose what these drugs represent.",
+                "<br>If you have other identifiers (e.g. EntrezID), please go to the",
+                as.character(strong(" converter page")), " to convert."
               )
-            ),
-            checkboxGroupInput(
-              "sel_ss",
-              label = NULL,
-              choices = ss_list,
-              selected = c("SS_Xsum", "SS_CMap")
             )
-          ),
-          div(
-            class = "mb-0",
-            div(
-              class = "fw-bold mb-0",
-              step_pop(
-                " Step 3. Upload oncogenic signature",
-                paste(
-                  "oncogenic signature is a gene list (gene symbol) with log2FC, derived from gene expression profile from cell lines or patient cohorts. A",
-                  a(href = "demo/signature.txt", "demo signature file"),
-                  "is provided.<br>If you have other identifier (e.g. EntrezID), please go to",
-                  as.character(strong(" converter page")),
-                  " to convert your signature."
-                )
-              )
-            ),
+          )),
+          card_body(
+            div(class = "fw-bold small mb-1", "Step 2 \u00b7 Oncogenic signature"),
             fileInput(
               inputId = "file_sig",
               label = NULL,
               buttonLabel = "Browse...",
               placeholder = "No file selected",
               accept = c(".csv", ".txt")
+            ),
+            div(class = "fw-bold small mb-1 mt-2", "Step 3 \u00b7 Drug annotation & what it means"),
+            fileInput(
+              inputId = "file_anno",
+              label = NULL,
+              buttonLabel = "Browse...",
+              placeholder = "No file selected",
+              accept = c(".csv", ".txt")
+            ),
+            radioButtons(
+              "anno_type",
+              label = NULL,
+              choices = c("Effective drugs (efficacy benchmark)" = "effective",
+                          "Toxic drugs (toxicity screening)" = "toxic"),
+              selected = "effective",
+              inline = FALSE
             )
-          ),
-div(
-class = "mb-0",
-div(
-class = "fw-bold mb-0",
-step_pop(
-" Step 4. Upload drug annotation (a one-column drug list)",
-paste(
-"Upload a one-column list of drug names (header: Compound_name) - the drugs you want the signature search to retrieve. A",
-a(
-href = "demo/drug_annotation_ES.txt",
-"demo drug annotation"
-),
-"is provided.",
-"<br>Then tell the platform what these drugs represent (Step 5): <b>Effective drugs</b> for a treatment-efficacy benchmark, or <b>Toxic drugs</b> for a toxicity-screening benchmark."
-)
-)
-),
-fileInput(
-inputId = "file_anno",
-label = NULL,
-buttonLabel = "Browse...",
-placeholder = "No file selected",
-accept = c(".csv", ".txt")
-)
-),
-div(
-class = "mb-0",
-div(class = "fw-bold mb-0", " Step 5. What do these drugs represent?"),
-radioButtons(
-"anno_type",
-label = NULL,
-choices = c("Effective drugs (efficacy benchmark)" = "effective",
-"Toxic drugs (toxicity screening)" = "toxic"),
-selected = "effective",
-inline = TRUE
-)
-),
-          div(
-            class = "mb-0",
-div(class = "fw-bold mb-0", " Step 6. Select gene filter mode"),
+          )
+        ),
+        card(
+          card_header(class = "bg-transparent pb-0", div(class = "fw-bold",
+            step_pop(
+              " \u2462 Methods & gene filter",
+              paste(
+                "Step 4: please select ",
+                as.character(strong("at least TWO")),
+                " methods for benchmark. More methods mean more time.",
+                as.character(strong("The time for a full-selected job is 15~30 mins"))
+              )
+            )
+          )),
+          card_body(
+            checkboxGroupInput(
+              "sel_ss",
+              label = NULL,
+              choices = ss_list,
+              selected = c("SS_Xsum", "SS_CMap")
+            ),
+            div(class = "fw-bold small mb-1 mt-2", "Step 5 \u00b7 Gene filter mode"),
             radioButtons(
               "filter_mode_bm",
               label = NULL,
@@ -365,22 +329,16 @@ div(class = "fw-bold mb-0", " Step 6. Select gene filter mode"),
             )
           )
         ),
-        div(
-          class = "d-grid gap-2 mt-0",
-          actionButton("runBM", "Run", class = "btn-success"),
-          actionButton("reset", "Reset", class = "btn-outline-secondary"),
-          actionButton(
-            "runBENdemo",
-            "demo(Benchmark)",
-            class = "btn-outline-primary"
-          ),
-          actionButton(
-            "runBENdemo2",
-            "demo2(Tahoe)",
-            class = "btn-outline-primary"
+        card(
+          card_footer(class = "bg-transparent d-grid gap-2",
+            actionButton("runBM", "Run", class = "btn-success"),
+            actionButton("reset", "Reset", class = "btn-outline-secondary"),
+            actionButton("runBENdemo", "demo(Benchmark)", class = "btn-outline-primary"),
+            actionButton("runBENdemo2", "demo2(Tahoe)", class = "btn-outline-primary")
           )
         )
       ),
+
       card(
         full_screen = TRUE,
         # card_header("Benchmark results"),
@@ -400,11 +358,11 @@ div(class = "fw-bold mb-0", " Step 6. Select gene filter mode"),
         id = "sm_input",
         width = 380,
         title = NULL,
-        tagList(
-          div(
-            class = "mb-0",
-            div(
-              class = "fw-bold mb-0",
+        open = "always",
+        card(
+          card_header(class = "bg-transparent pb-0", div(class = "fw-bold", "① Query mode & methods")),
+          card_body(
+            div(class = "fw-bold small mb-1",
               step_pop(
                 " Step 1. Select module",
                 paste(
@@ -427,59 +385,54 @@ div(class = "fw-bold mb-0", " Step 6. Select gene filter mode"),
               ),
               selected = "singlemethod",
               options = list()
-            )
-          ),
-          div(
-            class = "mb-0",
-              div(
-                class = "fw-bold mb-0",
-                step_pop(
-                  " Step 2. Select Signature Search method(s)",
-                  paste(
-                    "<strong>singlemethod / SS_cross:</strong> Just select one method of your interest.<br>",
-                    "<strong>SS_all:</strong> Please select at least two methods of your interest. More methods mean more time. ",
-                    as.character(strong("The time for a full-selected job is 20~40 mins.")), "<br>",
-                    "<strong>Direction (SS_all):</strong> SS_all only compares drugs in the same direction (scores both > 0 or < 0). Down is default for oncogenic signature; other signature types are not recommended."
-                  )
-                )
-              ),
-              conditionalPanel(
-                condition = "input.sel_model_sm == 'singlemethod' | input.sel_model_sm == 'SS_cross'",
-                radioButtons(
-                  "sel_ss_sm",
-                  label = NULL,
-                  choices = ss_list,
-                  selected = "SS_GSEA"
-                )
-              ),
-              conditionalPanel(
-                condition = "input.sel_model_sm == 'SS_all'",
-                checkboxGroupInput(
-                  "sel_all_sm",
-                  label = NULL,
-                  choices = ss_list,
-                  selected = c("SS_Xsum", "SS_CMap")
-                ),
-                radioButtons(
-                  "sel_direct_sm",
-                  label = NULL,
-                  choices = sm_direct,
-                  inline = TRUE,
-                  selected = "Down"
+            ),
+            div(class = "fw-bold small mb-1 mt-3",
+              step_pop(
+                " Step 2. Select Signature Search method(s)",
+                paste(
+                  "<strong>singlemethod / SS_cross:</strong> Just select one method of your interest.<br>",
+                  "<strong>SS_all:</strong> Please select at least two methods of your interest. More methods mean more time. ",
+                  as.character(strong("The time for a full-selected job is 20~40 mins.")), "<br>",
+                  "<strong>Direction (SS_all):</strong> SS_all only compares drugs in the same direction (scores both > 0 or < 0). Down is default for oncogenic signature; other signature types are not recommended."
                 )
               )
             ),
-          div(
-            class = "mb-0",
-            div(
-              class = "fw-bold mb-0",
+            conditionalPanel(
+              condition = "input.sel_model_sm == 'singlemethod' | input.sel_model_sm == 'SS_cross'",
+              radioButtons(
+                "sel_ss_sm",
+                label = NULL,
+                choices = ss_list,
+                selected = "SS_GSEA"
+              )
+            ),
+            conditionalPanel(
+              condition = "input.sel_model_sm == 'SS_all'",
+              checkboxGroupInput(
+                "sel_all_sm",
+                label = NULL,
+                choices = ss_list,
+                selected = c("SS_Xsum", "SS_CMap")
+              ),
+              radioButtons(
+                "sel_direct_sm",
+                label = NULL,
+                choices = sm_direct,
+                inline = TRUE,
+                selected = "Down"
+              )
+            )
+          )
+        ),
+        card(
+          card_header(class = "bg-transparent pb-0", div(class = "fw-bold", "② Dataset & signature")),
+          card_body(
+            div(class = "fw-bold small mb-1",
               step_pop(
                 " Step 3. Select a pharmacotranscriptomic dataset",
                 paste(
                   "SSP contains datasets of 155 tumor cell lines at ",
-                  as.character(strong(
-                    "different concentration and treat time."
-                  )),
+                  as.character(strong("different concentration and treat time.")),
                   "<br>In general, we recommend user to select a dataset with more drugs and highly related to cancer of interest"
                 )
               )
@@ -504,12 +457,8 @@ div(class = "fw-bold mb-0", " Step 6. Select gene filter mode"),
               choices = drug_num_list_by_tissue[[DEFAULT_TISSUE_SM]],
               selected = DEFAULT_DS_SM,
               options = list()
-            )
-          ),
-          div(
-            class = "mb-0",
-            div(
-              class = "fw-bold mb-0",
+            ),
+            div(class = "fw-bold small mb-1 mt-3",
               step_pop(
                 " Step 4. Upload oncogenic signature(s)",
                 HTML(paste(
@@ -554,10 +503,12 @@ div(class = "fw-bold mb-0", " Step 6. Select gene filter mode"),
                 accept = c(".csv", ".txt")
               )
             )
-          ),
-          div(
-            class = "mb-0",
-            div(class = "fw-bold mb-0", " Step 5. Set gene filter"),
+          )
+        ),
+        card(
+          card_header(class = "bg-transparent pb-0", div(class = "fw-bold", "③ Gene filter")),
+          card_body(
+            div(class = "fw-bold small mb-1", " Step 5. Set gene filter"),
             radioButtons(
               "filter_mode_sm",
               label = NULL,
@@ -567,45 +518,21 @@ div(class = "fw-bold mb-0", " Step 6. Select gene filter mode"),
             ),
             conditionalPanel(
               condition = "input.filter_mode_sm == 'topN'",
-              numericInput(
-                "sel_topn_sm",
-                label = NULL,
-                value = 150,
-                min = 10,
-                max = 1000
-              )
+              numericInput("sel_topn_sm", label = NULL, value = 150, min = 10, max = 1000)
             ),
             conditionalPanel(
               condition = "input.filter_mode_sm == 'logFC'",
-              numericInput(
-                "sel_fc_sm",
-                label = NULL,
-                value = 0.5,
-                min = 0.05,
-                max = 5,
-                step = 0.05
-              )
+              numericInput("sel_fc_sm", label = NULL, value = 0.5, min = 0.05, max = 5, step = 0.05)
             )
           )
         ),
-        div(
-          class = "d-grid gap-2 mt-0",
-          actionButton("runSM", "Run", class = "btn-success"),
-          actionButton("reset_sm", "Reset", class = "btn-outline-secondary"),
-          actionButton(
-            "runAPPdemo1",
-            "demo(Single method)",
-            class = "btn-outline-primary"
-          ),
-          actionButton(
-            "runAPPdemo2",
-            "demo(SS_all)",
-            class = "btn-outline-primary"
-          ),
-          actionButton(
-            "runAPPdemo3",
-            "demo(SS_cross)",
-            class = "btn-outline-primary"
+        card(
+          card_footer(class = "bg-transparent d-grid gap-2",
+            actionButton("runSM", "Run", class = "btn-success"),
+            actionButton("reset_sm", "Reset", class = "btn-outline-secondary"),
+            actionButton("runAPPdemo1", "demo(Single method)", class = "btn-outline-primary"),
+            actionButton("runAPPdemo2", "demo(SS_all)", class = "btn-outline-primary"),
+            actionButton("runAPPdemo3", "demo(SS_cross)", class = "btn-outline-primary")
           )
         )
       ),
@@ -629,48 +556,29 @@ div(class = "fw-bold mb-0", " Step 6. Select gene filter mode"),
         id = "job_page",
         width = 380,
         title = NULL,
-        textInput(
-          "jobid_input",
-          label = "Input Jobid",
-          value = "BEN1783750343BUH"
-        ),
-        div(
-          class = "d-grid gap-2 mt-0",
-          actionButton("jobid_get", "Retrieve", class = "btn-success"),
-          actionButton("reset_jc", "Reset", class = "btn-outline-secondary"),
-          actionButton(
-            "runjcBENdemo",
-            "demo(Benchmark)",
-            class = "btn-outline-primary"
+        open = "always",
+        card(
+          card_header(class = "bg-transparent pb-0", div(class = "fw-bold",
+            bs_icon("search"), " Retrieve a result by Job ID")),
+          card_body(
+            textInput(
+              "jobid_input",
+              label = "Input Jobid",
+              value = "BEN1783750343BUH"
+            ),
+            shiny::p(
+              class = "text-muted small mt-2 mb-0",
+              "Please be aware that the \"Quick Tip\" button may become unresponsive when you're viewing identical result types across two different modules (e.g. Benchmark results in both Benchmark and Job Center). Use the \"Reset\" button in the respective module to reactivate it."
+            )
           ),
-          actionButton(
-            "runjcBENdemo2",
-            "demo2(Tahoe)",
-            class = "btn-outline-primary"
-          ),
-          actionButton(
-            "runjcAPPdemo1",
-            "demo(Single method)",
-            class = "btn-outline-primary"
-          ),
-          actionButton(
-            "runjcAPPdemo2",
-            "demo(SS_all)",
-            class = "btn-outline-primary"
-          ),
-          actionButton(
-            "runjcAPPdemo3",
-            "demo(SS_cross)",
-            class = "btn-outline-primary"
-          )
-        ),
-        shiny::p(
-          br(),
-          strong(
-            "Please be aware that the \"Quick Tip\" button may become unresponsive when you're viewing identical result types across two different modules, such as seeing AUC in both the Job Center and Benchmark, or SS_all in both the Job Center and Application."
-          ),
-          strong(
-            "In such cases, kindly use the \"Reset\" button within the respective module to reactivate the \"Quick Tip\" functionality in the other module."
+          card_footer(class = "bg-transparent d-grid gap-2",
+            actionButton("jobid_get", "Retrieve", class = "btn-success"),
+            actionButton("reset_jc", "Reset", class = "btn-outline-secondary"),
+            actionButton("runjcBENdemo", "demo(Benchmark)", class = "btn-outline-primary"),
+            actionButton("runjcBENdemo2", "demo2(Tahoe)", class = "btn-outline-primary"),
+            actionButton("runjcAPPdemo1", "demo(Single method)", class = "btn-outline-primary"),
+            actionButton("runjcAPPdemo2", "demo(SS_all)", class = "btn-outline-primary"),
+            actionButton("runjcAPPdemo3", "demo(SS_cross)", class = "btn-outline-primary")
           )
         )
       ),
@@ -683,90 +591,6 @@ div(class = "fw-bold mb-0", " Step 6. Select gene filter mode"),
     )
   ),
 
-  ###############################################.
-  ## Annotation ----
-  ###############################################.
-  nav_menu(
-    title = "Annotation",
-    icon = bs_icon("tags"),
-    value = "annotation",
-    nav_panel(
-      title = "For AUC",
-      value = "an_auc",
-      layout_sidebar(
-        sidebar = sidebar(
-          width = 350,
-          title = NULL,
-          shiny::p(
-            br(),
-            "Select a cancer and download annotations.",
-            br(),
-            "The drug annotation are display on the right table.",
-            br(),
-            "Here are two types of annotation files for different methods.",
-            br()
-          ),
-          pickerInput(
-            "an_auc_input",
-            "Please select cancer",
-            choices = disinfo_vector,
-            selected = "PRAD",
-            options = list()
-          ),
-          shiny::br(),
-          downloadButton(
-            "run_an_auc",
-            "Download annotations",
-            class = "btn-success"
-          )
-        ),
-        card(
-          full_screen = TRUE,
-          # card_header("AUC annotations"),
-          uiOutput(outputId = "display_an_auc") %>% withSpinner(),
-          dataTableOutput("display_an_auc_tb")
-        )
-      )
-    ),
-    nav_panel(
-      title = "For ES",
-      value = "an_es",
-      layout_sidebar(
-        sidebar = sidebar(
-          width = 350,
-          title = NULL,
-          shiny::p(
-            br(),
-            "Select a cancer and download annotations.",
-            br(),
-            "The drug annotation are display on the right table.",
-            br(),
-            "Here are two types of annotation files for different methods.",
-            br()
-          ),
-          pickerInput(
-            "an_es_input",
-            "Please select cancer",
-            choices = disinfo_vector2,
-            selected = "BRCA",
-            options = list()
-          ),
-          shiny::br(),
-          downloadButton(
-            "run_an_es",
-            "Download annotations",
-            class = "btn-success"
-          )
-        ),
-        card(
-          full_screen = TRUE,
-          # card_header("ES annotations"),
-          uiOutput(outputId = "display_an_es") %>% withSpinner(),
-          dataTableOutput("display_an_es_tb")
-        )
-      )
-    )
-  ),
 
   ###############################################.
   ## Converter ----
@@ -782,25 +606,33 @@ div(class = "fw-bold mb-0", " Step 6. Select gene filter mode"),
         sidebar = sidebar(
           width = 350,
           title = NULL,
-          textAreaInput(
-            "text_ctg",
-            "Step 1. Input your signature",
-            height = "200px"
+          open = "always",
+          card(
+            card_header(class = "bg-transparent pb-0", div(class = "fw-bold", "① Input your IDs")),
+            card_body(
+              textAreaInput("text_ctg", label = NULL, height = "200px"),
+              actionButton("runCTGdemo", "demo", class = "btn-outline-primary")
+            )
           ),
-          actionButton("runCTGdemo", "demo", class = "btn-outline-primary"),
-          shiny::p(),
-          radioButtons(
-            "format_ctg",
-            "Step 2. Select the \"From\" ID",
-            inline = TRUE,
-            choices = c("ENTREZID", "ENSEMBL", "UNIPROT", "GENENAME")
-          ),
-          checkboxInput(
-            "header_check_ctg",
-            label = strong("Step 3. Header or non-header?"),
-            value = TRUE
-          ),
-          actionButton("runCTG", "Convert", class = "btn-success")
+          card(
+            card_header(class = "bg-transparent pb-0", div(class = "fw-bold", "② ID type & header")),
+            card_body(
+              radioButtons(
+                "format_ctg",
+                "Convert from",
+                inline = TRUE,
+                choices = c("ENTREZID", "ENSEMBL", "UNIPROT", "GENENAME")
+              ),
+              checkboxInput(
+                "header_check_ctg",
+                label = strong("The first row is a header"),
+                value = TRUE
+              )
+            ),
+            card_footer(class = "bg-transparent",
+              actionButton("runCTG", "Convert", class = "btn-success w-100")
+            )
+          )
         ),
         card(
           full_screen = TRUE,
@@ -816,33 +648,43 @@ div(class = "fw-bold mb-0", " Step 6. Select gene filter mode"),
         sidebar = sidebar(
           width = 350,
           title = NULL,
-          textAreaInput(
-            "text_ctd",
-            "Step 1. Input your drug ID",
-            height = "200px"
-          ),
-          actionButton("runCTDdemo1", "demo1", class = "btn-outline-primary"),
-          actionButton("runCTDdemo2", "demo2", class = "btn-outline-primary"),
-          actionButton("runCTDdemo3", "demo3", class = "btn-outline-primary"),
-          shiny::p(),
-          radioButtons(
-            "format_ctd",
-            "Step 2. Select the \"From\" ID",
-            inline = TRUE,
-            choices = c(
-              "Drug Name" = "net_drug_name",
-              "SMILES(Canonical)" = "canonical_smiles",
-              "PubChem Cid" = "pubchem_cid",
-              "InChIKeys" = "inchi_key",
-              "CMAP ID(BRD-)" = "pert_id"
+          open = "always",
+          card(
+            card_header(class = "bg-transparent pb-0", div(class = "fw-bold", "① Input your drug IDs")),
+            card_body(
+              textAreaInput("text_ctd", label = NULL, height = "200px"),
+              div(class = "d-flex flex-wrap gap-2",
+                actionButton("runCTDdemo1", "demo1", class = "btn-outline-primary"),
+                actionButton("runCTDdemo2", "demo2", class = "btn-outline-primary"),
+                actionButton("runCTDdemo3", "demo3", class = "btn-outline-primary")
+              )
             )
           ),
-          checkboxInput(
-            "header_check_ctd",
-            label = strong("Step 3. Header or non-header?"),
-            value = TRUE
-          ),
-          actionButton("runCTD", "Convert", class = "btn-success")
+          card(
+            card_header(class = "bg-transparent pb-0", div(class = "fw-bold", "② ID type & header")),
+            card_body(
+              radioButtons(
+                "format_ctd",
+                "Convert from",
+                inline = TRUE,
+                choices = c(
+                  "Drug Name" = "net_drug_name",
+                  "SMILES(Canonical)" = "canonical_smiles",
+                  "PubChem Cid" = "pubchem_cid",
+                  "InChIKeys" = "inchi_key",
+                  "CMAP ID(BRD-)" = "pert_id"
+                )
+              ),
+              checkboxInput(
+                "header_check_ctd",
+                label = strong("The first row is a header"),
+                value = TRUE
+              )
+            ),
+            card_footer(class = "bg-transparent",
+              actionButton("runCTD", "Convert", class = "btn-success w-100")
+            )
+          )
         ),
         card(
           full_screen = TRUE,
@@ -918,42 +760,49 @@ div(class = "fw-bold mb-0", " Step 6. Select gene filter mode"),
       page_fluid(
         div(
           style = "max-width: 900px; margin: 0 auto;",
-          h3("Download demo files to perform job"),
-          downloadButton("dl_demo", "Download Demo", class = "btn-success"),
-          downloadButton("dl_script", "Download Script", class = "btn-success"),
-          br(),
-          br(),
-          h3("Download curated pharmacotranscriptomic datasets"),
-          pickerInput(
-            "sel_source_dl",
-            label = "Select data source",
-            choices = names(drug_num_list_by_source_tissue),
-            selected = DEFAULT_SOURCE,
-            options = list()
+          h3("Download"),
+          card(
+            card_header(class = "bg-transparent pb-0",
+              div(class = "fw-bold", bs_icon("download"), " Demo files & scripts")),
+            card_body(
+              p(class = "text-muted small mb-2",
+                "Signature / drug annotation templates and the demo bundle used in the tutorials."),
+              div(class = "d-flex flex-wrap gap-2",
+                downloadButton("dl_demo", "Download Demo", class = "btn-success"),
+                downloadButton("dl_script", "Download Script", class = "btn-success")
+              )
+            )
           ),
-          pickerInput(
-            "sel_tissue_dl",
-            label = "Select tissue",
-            choices = names(drug_num_list_by_tissue),
-            selected = names(drug_num_list_by_tissue)[1],
-            options = list()
-          ),
-          pickerInput(
-            "sel_experiment_dl",
-            label = "Select a specific dataset",
-            choices = drug_num_list_by_tissue[[names(drug_num_list_by_tissue)[1]]],
-            selected = unname(drug_num_list_by_tissue[[names(drug_num_list_by_tissue)[1]]][1]),
-            options = list()
-          ),
-          downloadButton(
-            "dl_drug_exp",
-            "Download pharmacotranscriptomic dataset",
-            class = "btn-success"
-          ),
-          downloadButton(
-            "dl_drug_ann",
-            "Download Drug and Experiment info",
-            class = "btn-success"
+          card(
+            card_header(class = "bg-transparent pb-0",
+              div(class = "fw-bold", bs_icon("database"), " Curated pharmacotranscriptomic datasets")),
+            card_body(
+              pickerInput(
+                "sel_source_dl",
+                label = "Select data source",
+                choices = names(drug_num_list_by_source_tissue),
+                selected = DEFAULT_SOURCE,
+                options = list()
+              ),
+              pickerInput(
+                "sel_tissue_dl",
+                label = "Select tissue",
+                choices = names(drug_num_list_by_tissue),
+                selected = names(drug_num_list_by_tissue)[1],
+                options = list()
+              ),
+              pickerInput(
+                "sel_experiment_dl",
+                label = "Select a specific dataset",
+                choices = drug_num_list_by_tissue[[names(drug_num_list_by_tissue)[1]]],
+                selected = unname(drug_num_list_by_tissue[[names(drug_num_list_by_tissue)[1]]][1]),
+                options = list()
+              ),
+              div(class = "d-flex flex-wrap gap-2",
+                downloadButton("dl_drug_exp", "Download dataset", class = "btn-success"),
+                downloadButton("dl_drug_ann", "Download Drug / Experiment info", class = "btn-success")
+              )
+            )
           )
         )
       )
@@ -968,8 +817,7 @@ div(class = "fw-bold mb-0", " Step 6. Select gene filter mode"),
         )
       )
     )
-  ),
-  nav_item(input_dark_mode(), class = "ms-auto")
+  )
 )
 # --------------------------------------------------------------------------
 # Server --------------------------------------------------------------------
@@ -1024,7 +872,6 @@ server <- function(input, output, session) {
   # source(file.path("data_tab.R"),  local = TRUE)$value
   source(file.path("tab_info.R"),  local = TRUE)$value
   source(file.path("tab_converter.R"),  local = TRUE)$value
-  source(file.path("tab_annotation.R"),  local = TRUE)$value
   source(file.path("tab_utils.R"),  local = TRUE)$value
 
   addResourcePath(prefix = "demo", directoryPath = "demo")
@@ -1044,9 +891,6 @@ server <- function(input, output, session) {
     nav_select(id = "intabset", selected = "jobcenter", session = session)
   })
 
-  observeEvent(input$jump_to_an, {
-    nav_select(id = "intabset", selected = "an_es", session = session)
-  })
 
   observeEvent(input$jump_to_ct, {
     nav_select(id = "intabset", selected = "ct_gene", session = session)

@@ -534,7 +534,12 @@ DT_overview <- NULL      # Summary 页的跨方法总览表
 if (!is.null(mtab) && length(mets) > 0) {
   DT_overview <- tryCatch({
     ov <- metrics_overview(mtab)
-    if (is.null(ov)) NULL else DT::datatable(ov)
+    if (is.null(ov)) NULL else {
+      # 数值列统一 4 位小数（与指标宽表一致；否则总览表会出现 16 位小数）
+      num <- vapply(ov, is.numeric, logical(1))
+      ov[num] <- lapply(ov[num], function(x) round(x, 4))
+      DT::datatable(ov)
+    }
   }, error = function(e) { metric_err <<- conditionMessage(e); message("[res_plot] Summary 表构建失败: ", conditionMessage(e)); NULL })
 }
 DT_metric <- list()      # 名字 = 指标名；每个都是与 AUC/ES 表同构的宽表

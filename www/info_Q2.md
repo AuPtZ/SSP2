@@ -71,9 +71,6 @@ The file should appear as follows and upload in step 4b:
 SSP will calculate drug scores and determine the **enrichment score (ES)**, with **a lower ES indicating enhanced performance**.    
 
 
-**Additionally, the SSP provides a primary annotated drug list accessible through the Annotation Module.**   
-
-
 #### Submission   
 Ultimately, initiate the process by clicking 'Run,' which will generate a job ID (**jobid**) prefixed with 'BEN'. Results are typically available within approximately 15~30 minutes, and a 'Quick Tip' will be provided to assist with result interpretation. Alternatively, you may close the page and retrieve the job ID in the **Job Center**  for future result retrieval.   
 

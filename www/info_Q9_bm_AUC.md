@@ -1,5 +1,5 @@
 In result of AUC, the image is a scatter plot depicting the results of the **Area Under the Curve (AUC)** for different **signature search methods (SSMs)** across various TopN values. AUC is a metric used to evaluate the performance of SSMs, typically in drug efficacy classification tasks. There are five methods represented by different colored dots: **CMap (red)**, **GSEA (blue)**, **XCos (green)**, **XSum (purple)**, and **ZhangScore (orange)**. The AUC results for each method at different TopN values are plotted with the corresponding colored dots, with a smooth trend line for each method indicating the change in AUC as TopN increases.   
-The vertical dashed line in the scatter plot indicates the position of the TopN value where the **maximum AUC** is achieved for one or more methods.  
+The best value reached by each method is marked with a **white ring** on its curve, and the subtitle above the plot reports the overall best (method, TopN and value). Note that the optimal TopN differs between methods, so a single ring position is not representative of all of them.  
 <div style="padding: 10px; text-align: center;">
 <img src="imginfoQ9_1.png" width = "80%" height = "80%" />
 </div>

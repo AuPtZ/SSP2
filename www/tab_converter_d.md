@@ -1,18 +1,27 @@
-### Welcome to Converter Page (for Drug)  
+### Converter (for Drug)
 
-SSP accepts annotation of **drug name**, and **the identifier of drug is drug name**. However, as there are other type of drug identifier (such as **PubChem Cid** and **InChIKeys**), The Converter page (for Drug) is introduced to provide an easy way to convert drugs to a compatible format.  
-On this page, you can upload your drug list, and view the converted drug names immediately.  
-**Please note that the Converter module only returns drugs that are within the PTDs.**  
+SSP annotates drugs by **drug name** - the identifier of a drug in SSP is the
+`Compound_name`. If your list uses another identifier (**SMILES(Canonical)**,
+**PubChem Cid**, **InChIKeys** or **CMAP ID (BRD-)**), convert it here first: paste your
+list in the left panel, choose the identifier type and click **Convert**; the converted
+drug names are shown immediately on the right.
 
+**Please note that the Converter module only returns drugs that are within the PTDs.**
 
-Here are some tips:  
-1. Converter accepts signature file with **no more than 1000 rows**.  
-2. If you input a drug name list and select "Drug Name", SSP will attempt to correct drug names **(regarding capitalization and the presence of spaces)** to ensure consistency with the names in inner-built pharmacotranscriptomic dataset. This is very useful when you collect drug information on your own.  
-3. **SSP accept the input in one-column tab-separated file (for ES) or two-column tab-separated file (for AUC).** SSP will keep the second column in output.   
-
-In addition, we also provide a gene converter, you can access the sub-module by clicking on the different tabs.  
-
-<div style="padding: 10px; text-align: center;">
-<img src="imgct1.png" width = "30%" height = "30%" />
+<div style="padding: 6px; text-align: center;">
+<img src="imgct_new_d.png" width="34%" />
 </div>
 
+Here are some tips:
+
+1. The Converter accepts a drug list with **no more than 1000 rows**.
+2. **SSP accepts a one-column list or a two-column tab-separated table.** The second column
+   is kept in the output as `Group`, so an existing label (e.g. `Effective`) survives the
+   conversion and can be used directly as the drug annotation in the Benchmark page.
+3. If you input drug names and select **Drug Name**, SSP will try to correct the names
+   **(capitalization and spaces)** to match the inner-built pharmacotranscriptomic datasets.
+   This is very useful when the drug information was collected on your own.
+4. The three **demo** buttons load an example list for each supported identifier type.
+
+In addition, we also provide a gene converter; you can access the sub-module by clicking on
+the **Gene** tab.

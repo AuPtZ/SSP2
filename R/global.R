@@ -151,8 +151,6 @@ DEFAULT_TISSUE_BM <- if ("Bone"   %in% names(drug_num_list_by_tissue)) "Bone"   
 DEFAULT_TISSUE_SM <- if ("Breast" %in% names(drug_num_list_by_tissue)) "Breast" else names(drug_num_list_by_tissue)[1]
 DEFAULT_DS_BM     <- first_in(DEFAULT_TISSUE_BM)
 DEFAULT_DS_SM     <- first_in(DEFAULT_TISSUE_SM)
-load("data_preload/annotation/disinfo_vector.Rdata")
-load("data_preload/annotation/disinfo_vector2.Rdata")
 load("data_preload/others/landmark.rdata")
 
 # Step 标题后显示一个 ? 问号图标，点击该图标弹出说明文字
