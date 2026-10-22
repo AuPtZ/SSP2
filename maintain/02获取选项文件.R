@@ -30,6 +30,8 @@ get_drug_num <- function(profile_file) {
   disp_name <- gsub("\\.rdata$", "", profile_file)
   src  <- if (grepl("^Tahoe_", disp_name)) "Tahoe" else "LINCS"
   disp_name <- gsub("_", " ", sub("^(Tahoe|LINCS)_", "", disp_name))
+  # Tahoe-100M 只有 24h 一个作用时间点（文件名里没有时间维度），显示名里补上，与 LINCS 的 6h/24h 对齐
+  if (src == "Tahoe") disp_name <- paste0(disp_name, " 24h")
   disp_name <- paste0(src, " ", disp_name, " (", drug_num, " drugs)")
 
   gc()
