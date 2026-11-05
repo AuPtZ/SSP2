@@ -166,6 +166,16 @@ step_pop <- function(title, help, popover_title = NULL) {
   tagList(title, help_icon)
 }
 
+# 渲染 markdown 文档，但不把本地图片 base64 内联（改为 www/ 静态路径按需加载）。
+# markdown 2.0 的 mark() 默认把本地图片内联成 base64，导致初始 HTML 膨胀（首页 9MB+）。
+# 关键：用 mark(text=...)（而非 mark(file=...)）——text 模式下图片路径相对 getwd() 解析，
+# 找不到 www/ 里的文件、跳过内联；图片保留相对路径（如 src="imginfo0.PNG"），
+# 浏览器相对当前页面 URL 请求，根路径或子路径部署都正确。
+includeMarkdownExternal <- function(path) {
+  txt <- paste(readLines(path, warn = FALSE), collapse = "\n")
+  suppressWarnings(htmltools::HTML(markdown::mark(text = txt, output = NULL)))
+}
+
 
 
 
