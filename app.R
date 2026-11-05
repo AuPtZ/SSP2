@@ -19,7 +19,7 @@ options(shiny.sanitize.errors = TRUE)
 ui <- page_navbar(
   id = "intabset",
   title = tagList(bs_icon("stars"), "SSP2"),
-  window_title = "SSP2",
+  window_title = "SSP2: Signature Search Polestar 2",
   lang = "en",
   theme = bs_theme(
     version = 5,
@@ -41,6 +41,12 @@ ui <- page_navbar(
     # introjsUI(),
     tags$head(
       tags$title("Signature Search Polestar 2"),
+      tags$meta(name = "description",
+                content = "Signature Search Polestar 2 (SSP2) - a webserver for signature-based drug repurposing: evaluate signature search methods and query promising drugs for customized oncogenic signatures."),
+      tags$meta(property = "og:title", content = "SSP2: Signature Search Polestar 2"),
+      tags$meta(property = "og:description",
+                content = "A webserver for signature-based drug repurposing and signature search method evaluation."),
+      tags$meta(property = "og:type", content = "website"),
       tags$link(rel = "shortcut icon", href = "favicon.ico"),
       tags$base(target = "_blank"),
       tags$script(HTML(
@@ -333,7 +339,6 @@ ui <- page_navbar(
           card_footer(class = "bg-transparent d-grid gap-2",
             actionButton("runBM", "Run", class = "btn-success"),
             actionButton("reset", "Reset", class = "btn-outline-secondary"),
-            actionButton("runBENdemo", "demo(Benchmark)", class = "btn-outline-primary"),
             actionButton("runBENdemo2", "demo2(Tahoe)", class = "btn-outline-primary")
           )
         )
@@ -564,7 +569,7 @@ ui <- page_navbar(
             textInput(
               "jobid_input",
               label = "Input Jobid",
-              value = "BEN1783750343BUH"
+              value = "APP1790735151KID"
             ),
             shiny::p(
               class = "text-muted small mt-2 mb-0",
@@ -574,11 +579,17 @@ ui <- page_navbar(
           card_footer(class = "bg-transparent d-grid gap-2",
             actionButton("jobid_get", "Retrieve", class = "btn-success"),
             actionButton("reset_jc", "Reset", class = "btn-outline-secondary"),
-            actionButton("runjcBENdemo", "demo(Benchmark)", class = "btn-outline-primary"),
             actionButton("runjcBENdemo2", "demo2(Tahoe)", class = "btn-outline-primary"),
             actionButton("runjcAPPdemo1", "demo(Single method)", class = "btn-outline-primary"),
             actionButton("runjcAPPdemo2", "demo(SS_all)", class = "btn-outline-primary"),
             actionButton("runjcAPPdemo3", "demo(SS_cross)", class = "btn-outline-primary")
+          )
+        ),
+        card(
+          card_header(class = "bg-transparent pb-0", div(class = "fw-bold",
+            bs_icon("clock-history"), " Recent jobs (this session)")),
+          card_body(
+            uiOutput("jc_recent_jobs")
           )
         )
       ),
@@ -710,47 +721,51 @@ ui <- page_navbar(
       well = FALSE,
       # 左侧竖排导航切换帮助主题（替代 radio 按钮）
       nav_panel(
-        "Q1: Why we built SSP?", value = "q1",
-        card(title = NULL, full_screen = TRUE, includeMarkdown("www/info_Q1.md"))
+        "Q1: Why we built SSP2?", value = "q1",
+        card(title = NULL, full_screen = TRUE, includeMarkdownExternal("www/info_Q1.md"))
       ),
       nav_panel(
         "Q2: Benchmark", value = "q2",
-        card(title = NULL, full_screen = TRUE, includeMarkdown("www/info_Q2.md"))
+        card(title = NULL, full_screen = TRUE, includeMarkdownExternal("www/info_Q2.md"))
       ),
       nav_panel(
-        "Q4: Application", value = "q4",
-        card(title = NULL, full_screen = TRUE, includeMarkdown("www/info_Q4.md"))
+        "Q3: Application", value = "q4",
+        card(title = NULL, full_screen = TRUE, includeMarkdownExternal("www/info_Q4.md"))
       ),
       nav_panel(
-        "Q5: Download data", value = "q5",
-        card(title = NULL, full_screen = TRUE, includeMarkdown("www/info_Q5.md"))
+        "Q4: Download data", value = "q5",
+        card(title = NULL, full_screen = TRUE, includeMarkdownExternal("www/info_Q5.md"))
       ),
       nav_panel(
-        "Q6: Retrieve job", value = "q6",
-        card(title = NULL, full_screen = TRUE, includeMarkdown("www/info_Q6.md"))
+        "Q5: Retrieve job", value = "q6",
+        card(title = NULL, full_screen = TRUE, includeMarkdownExternal("www/info_Q6.md"))
       ),
       nav_panel(
-        "Q7: Annotate drug", value = "q7",
-        card(title = NULL, full_screen = TRUE, includeMarkdown("www/info_Q7.md"))
+        "Q6: Annotate drug", value = "q7",
+        card(title = NULL, full_screen = TRUE, includeMarkdownExternal("www/info_Q7.md"))
       ),
       nav_panel(
-        "Q8: Other signature types", value = "q8",
-        card(title = NULL, full_screen = TRUE, includeMarkdown("www/info_Q8.md"))
+        "Q7: Other signature types", value = "q8",
+        card(title = NULL, full_screen = TRUE, includeMarkdownExternal("www/info_Q8.md"))
       ),
       nav_panel(
-        "Q9: Optimal topN/method", value = "q9",
+        "Q8: Optimal topN/method", value = "q9",
         card(
           title = NULL, full_screen = TRUE,
           tagList(
             shiny::h3("How to find the optimal topN and method?"),
-            includeMarkdown("www/info_Q9_bm_ES.md"),
-            includeMarkdown("www/info_Q9_bm_AUC.md")
+            includeMarkdownExternal("www/info_Q9_bm_ES.md"),
+            includeMarkdownExternal("www/info_Q9_bm_AUC.md")
           )
         )
       ),
       nav_panel(
-        "Q10: Deploy SSP", value = "q10",
-        card(title = NULL, full_screen = TRUE, includeMarkdown("www/info_Q10.md"))
+        "Q9: Deploy SSP", value = "q10",
+        card(title = NULL, full_screen = TRUE, includeMarkdownExternal("www/info_Q10.md"))
+      ),
+      nav_panel(
+        "Q10: Q&A from reviewers", value = "q11",
+        card(title = NULL, full_screen = TRUE, includeMarkdownExternal("www/info_Q11.md"))
       )
     )
     ),
@@ -863,6 +878,12 @@ server <- function(input, output, session) {
   make_source_obs("sel_source",    "sel_tissue",    "sel_experiment")     # Benchmark
   make_source_obs("sel_source_sm", "sel_tissue_sm", "sel_experiment_sm")  # Application
 
+  # 会话内最近任务（P2：Job Center 展示本会话提交的 jobid）
+  recent_jobs <- reactiveValues(ids = character(0))
+  register_recent_job <- function(jobid) {
+    recent_jobs$ids <- unique(c(jobid, recent_jobs$ids))
+  }
+
   ###############################################.
   ## Sourcing tab code  ----
   ###############################################.
@@ -899,7 +920,7 @@ server <- function(input, output, session) {
   # 重置
   observeEvent(input$btn_landing, {
     showModal(modalDialog(
-      includeMarkdown("www/info_homepage.md"),
+      includeMarkdownExternal("www/info_homepage.md"),
       title = "Guidence for New User",
       size = "l",
       easyClose = TRUE

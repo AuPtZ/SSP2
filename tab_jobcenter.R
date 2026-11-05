@@ -87,7 +87,6 @@ observeEvent(input$jobid_get, {
       req(job_info$yourmodule)
       
       res_plot(job_info, prefix = "jc")
-      # save(job_info,file = "demo/BEN1790672381JTV.rdata")
       
     }) # isolate end
   })
@@ -198,3 +197,22 @@ initial_jc <- tagList(
     
     ),
 )
+
+# ---- 最近任务列表（P2：本会话提交的 jobid，点击填入输入框）----
+output$jc_recent_jobs <- renderUI({
+  ids <- recent_jobs$ids
+  if (length(ids) == 0) {
+    return(shiny::p("No jobs submitted in this session yet.",
+                    class = "text-muted small mb-0"))
+  }
+  shiny::tags$div(
+    lapply(ids, function(id) {
+      shiny::tags$a(
+        href = "#",
+        onclick = sprintf("$('#jobid_input').val('%s').trigger('change'); return false;", id),
+        id,
+        class = "d-block small text-truncate mb-1"
+      )
+    })
+  )
+})

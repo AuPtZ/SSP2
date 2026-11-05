@@ -1,10 +1,10 @@
 output$dl_manual_pdf <- downloadHandler(
 
   filename = function() {
-    return("manual of SSP.pdf")
+    return("manual of SSP2.pdf")
   },
   content = function(file) {
-    file.copy("demo/manual of SSP V5.pdf", file)
+    file.copy("demo/manual of SSP2.pdf", file)
 
   }
 )
@@ -53,7 +53,7 @@ output$dl_demo <- downloadHandler(
                "demo/drug_annotation_AUC.txt",
                "demo/signature.txt",
                "demo/signature2.txt",
-               "demo/manual of SSP V5.pdf",
+               "demo/manual of SSP2.pdf",
                "demo/CS_AUC.txt",
                "demo/CS_ES.txt",
                "demo/CS_OGS.txt"
@@ -80,20 +80,69 @@ output$dl_script <- downloadHandler(
 
 
 output$display_about =  renderUI({
-  
+
   tagList(
-    shiny::h3("Session info"),
-    shiny::p("We provide session info for users who want to perform our job in self computer"),
+    shiny::h3("About SSP2"),
+    shiny::p(
+      "Signature Search Polestar 2 (SSP2) is the upgraded version of the SSP webserver ",
+      "for signature-based drug repurposing. It evaluates signature search methods (SSMs) ",
+      "against pharmacotranscriptomic datasets and queries promising drugs for a customized ",
+      "oncogenic signature."
+    ),
+
+    shiny::h4("Authors"),
+    shiny::tags$ul(
+      shiny::tags$li(shiny::strong("Jinbo Zhang"), " - Department of Phytochemistry, School of Pharmacy, Second Military Medical University, Shanghai 200433, China; Department of Pharmacy, Tianjin Rehabilitation Center of Joint Logistics Support Force, Tianjin 300110, China"),
+      shiny::tags$li(shiny::strong("Shunling Yuan"), " - Department of Phytochemistry, School of Pharmacy, Second Military Medical University, Shanghai 200433, China"),
+      shiny::tags$li(shiny::strong("Wen Cao"), " - Department of Phytochemistry, School of Pharmacy, Second Military Medical University, Shanghai 200433, China"),
+      shiny::tags$li(shiny::strong("Xianrui Jiang"), " - Changhai Hospital, Second Military Medical University, Shanghai 200433, China"),
+      shiny::tags$li(shiny::strong("Cheng Yang"), " - Department of Clinical Nutrition, Tianjin Rehabilitation Center of Joint Logistics Support Force, Tianjin 300110, China"),
+      shiny::tags$li(shiny::strong("Chenchao Jiang"), " - Department of Pharmacy, Tianjin Rehabilitation Center of Joint Logistics Support Force, Tianjin 300110, China"),
+      shiny::tags$li(shiny::strong("Runhui Liu"), " - Department of Phytochemistry, School of Pharmacy, Second Military Medical University, Shanghai 200433, China"),
+      shiny::tags$li(shiny::strong("Wei Yang"), " - Department of Pharmacy, Tianjin Rehabilitation Center of Joint Logistics Support Force, Tianjin 300110, China"),
+      shiny::tags$li(shiny::strong("Saisai Tian"), " - Department of Phytochemistry, School of Pharmacy, Second Military Medical University, Shanghai 200433, China; Key Laboratory of Molecular Pharmacology and Drug Evaluation (Yantai University), Ministry of Education, Yantai University, Yantai 264005, China")
+    ),
+
+    shiny::h4("Corresponding author"),
+    shiny::p("Saisai Tian", shiny::em("(TODO: institutional email)")),
+
+    shiny::h4("How to cite"),
+    shiny::p(
+      "Zhang J, Yuan S, Cao W, Jiang X, Yang C, Jiang C, Liu R, Yang W, Tian S. ",
+      "Signature Search Polestar: a comprehensive drug repurposing method evaluation ",
+      "assistant for customized oncogenic signature. ",
+      shiny::em("Bioinformatics"), ". 2024;40(9):btae536. ",
+      "doi:10.1093/bioinformatics/btae536."
+    ),
+
+    shiny::downloadButton("dl_manual_pdf", "Download manual (PDF)",
+                          class = "btn-outline-primary"),
+
+    shiny::h4("Funding"),
+    shiny::p("National Key Research and Development Program of China (2022YFC3502000)."),
+
+    shiny::h4("License"),
+    shiny::p("Mulan Permissive Software License, Version 2 (MulanPSL-2.0)."),
+
+    shiny::h4("Data sources"),
+    shiny::p(
+      "LINCS L1000 (GSE92742), LINCS2020 beta, Tahoe-100M. ",
+      "Gene and drug identifier conversion is supported by Ensembl, UniProt and PubChem."
+    ),
+
+    shiny::h4("Version history"),
+    shiny::tags$ul(
+      shiny::tags$li(shiny::strong("SSP2"), " (current) - expanded to 155 LINCS tumor cell lines plus Tahoe-100M, seven SSMs (adding PLAGE and QuSAGE), rebuilt ranking-quality metrics, Job Center and Converter modules."),
+      shiny::tags$li(shiny::strong("SSP v1"), " - Zhang et al., Bioinformatics, 2024;40(9):btae536.")
+    ),
+
+    shiny::hr(),
+
+    shiny::h4("Session information"),
+    shiny::p("Provided for users who want to reproduce the analysis on their own computer."),
     renderPrint(sessionInfo())
-    # shiny::h3("Browsing Map"),
-    # div(
-    #   tags$script(src="//rf.revolvermaps.com/0/0/7.js?i=5jq3pohyu8j&amp;m=0&amp;c=ff0000&amp;cr1=ffffff&amp;sx=0",
-    #               async="async"
-    #   ),style = "width:80%;margin:0 auto;"
-    # ),
-    
   )
 
-  
+
 })
 

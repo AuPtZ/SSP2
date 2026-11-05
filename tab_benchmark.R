@@ -158,6 +158,7 @@ sel_ss = sel_ss, filter_mode = filter_mode),
 meta = meta
 )
     rv_bm_job(jobid_bm)
+    register_recent_job(jobid_bm)
 
     output$display_bm <- renderUI({ ## renderUI 
       shiny::tagList(
@@ -299,5 +300,5 @@ output$dl_drug_ann_bm <- downloadHandler(
 
 
 initial_bm <- tagList(
-  includeMarkdown("www/tab_benchmark.md")
+  includeMarkdownExternal("www/tab_benchmark.md")
 )

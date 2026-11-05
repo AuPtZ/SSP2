@@ -127,7 +127,7 @@ if(T){
   
   # 初始化
   initial_ctg <- tagList(
-    includeMarkdown("www/tab_converter_g.md")
+    includeMarkdownExternal("www/tab_converter_g.md")
   )
   
   # 下载转换后的文件
@@ -322,7 +322,7 @@ if(T){
   
   # 初始化
   initial_ctd <- tagList(
-    includeMarkdown("www/tab_converter_d.md")
+    includeMarkdownExternal("www/tab_converter_d.md")
   )
   
   # 下载转换后的文件

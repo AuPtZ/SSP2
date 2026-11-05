@@ -26,7 +26,7 @@ if (!exists("pic_cache", mode = "environment") || is.null(pic_cache)) {
       if (!is.null(v) && v > seen) {
         tip_seen[[k]] <- v
         showModal(modalDialog(
-          includeMarkdown(md_file),
+          includeMarkdownExternal(md_file),
           title = title, size = "l", easyClose = TRUE
         ))
       }
@@ -320,11 +320,6 @@ hide_page_spinner <- function() {
 }
 
 # FOR EACH PAGE
-observeEvent(input$runBENdemo,{
-  job_info <- .load_demo("demo/BEN1790672381JTV.rdata")
-  show_page_spinner()
-  output$display_bm <- renderUI({ on.exit(hide_page_spinner(), add = TRUE); res_plot(job_info, prefix = "bm") })
-})
 observeEvent(input$runBENdemo2,{
   job_info <- .load_demo("demo/BEN_Tahoe_demo2.rdata")
   show_page_spinner()
@@ -346,11 +341,6 @@ observeEvent(input$runAPPdemo3,{
   output$display_sm <- renderUI({ on.exit(hide_page_spinner(), add = TRUE); res_plot(job_info, prefix = "sm") })
 })
 # FOR JOB PAGE
-observeEvent(input$runjcBENdemo,{
-  job_info <- .load_demo("demo/BEN1790672381JTV.rdata")
-  show_page_spinner()
-  output$display_jc <- renderUI({ on.exit(hide_page_spinner(), add = TRUE); res_plot(job_info, prefix = "jc") })
-})
 observeEvent(input$runjcBENdemo2,{
   job_info <- .load_demo("demo/BEN_Tahoe_demo2.rdata")
   show_page_spinner()

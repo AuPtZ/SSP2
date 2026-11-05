@@ -172,6 +172,7 @@ observeEvent(input$runSM, {
       meta = meta
     )
     rv_sm_job(jobid_sm)
+    register_recent_job(jobid_sm)
 
     output$display_sm <- renderUI({ 
       shiny::tagList(
@@ -309,5 +310,5 @@ judge_sm <- function(){
 
 # 初始化
 initial_sm <- tagList(
-  includeMarkdown("www/tab_application.md")
+  includeMarkdownExternal("www/tab_application.md")
 )
