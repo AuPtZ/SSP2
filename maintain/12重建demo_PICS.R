@@ -68,8 +68,4 @@ rebuild("demo/BEN_Tahoe_demo2.rdata", "demo2 (Tahoe)",
         DS = "Tahoe_PAN_0.5uM.rdata", sig_file = "demo/tahoe_signature.txt",
         anno_file = "demo/tahoe_annotation_ES.txt", anno_type = "effective")
 
-rebuild("demo/BEN1790672381JTV.rdata", "demo1 (LINCS)",
-        DS = "LINCS_MCF7_10uM_6h.rdata", sig_file = "demo/signature.txt",
-        anno_file = "demo/drug_annotation_ES.txt", anno_type = "effective")
-
 cat("\n[12] done\n")
