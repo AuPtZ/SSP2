@@ -22,7 +22,7 @@ SSP also offer a package of demo files in Info-data page.
 
 #### Details of each step
 **Pharmacotranscriptomic dataset**, originally sourced from LINCS L1000 (GSE92742), is presented in an n × m matrix where n represents the drug names and m denotes a list of gene symbols along with their corresponding log2FC values.   
-The SSP incorporates pharmacotranscriptomic datasets encompassing nine tumor cell lines across various concentrations and treatment durations.     
+The SSP2 incorporates pharmacotranscriptomic datasets encompassing 155 tumor cell lines from LINCS L1000 (plus 47 cell lines from Tahoe-100M) across various concentrations and treatment durations.     
 Generally, it is advisable for users to select a pharmacotranscriptomic dataset rich in drugs and closely related to the cancer of interest. pharmacotranscriptomic datasets obtained at 6 hours with 10μM or at 24 hours with 10μM are commonly recommended.  
 Utilizing multiple datasets is also recommended for users to enhance the reliability of the outcomes.  Drugs that are consistently ranked highly across different concentrations and treatment durations within pharmacotranscriptomic datasets have a higher likelihood of being effective.   
 

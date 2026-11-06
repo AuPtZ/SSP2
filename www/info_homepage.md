@@ -19,3 +19,8 @@ The three auxiliary modules primarily support the aforementioned primary modules
 
 We strongly recommend that users first visit the **Benchmark module** or the **Info-Help page** to understand the  operational procedures and file requirements before preparing your work.  
 For any inquiries, please click on the **"Contact us!"** link at the bottom of the website page for email consultation.
+
+#### How to cite
+If you use SSP2 in your research, please cite:
+
+Zhang J, Yuan S, Cao W, Jiang X, Yang C, Jiang C, Liu R, Yang W, Tian S. **Signature Search Polestar: a comprehensive drug repurposing method evaluation assistant for customized oncogenic signature.** *Bioinformatics*. 2024;40(9):btae536. doi:10.1093/bioinformatics/btae536.
