@@ -27,3 +27,9 @@ tahoe_prep/
 data_preload/
 .vscode/
 results/resinfo.db
+mcp
+R/mcp_utils.R
+_handoff/
+_review/
+results/
+results/resinfo.db
