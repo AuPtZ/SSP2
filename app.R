@@ -732,7 +732,24 @@ ui <- page_navbar(
       ),
       nav_panel(
         "Q3: Application", value = "q4",
-        card(title = NULL, full_screen = TRUE, includeMarkdownExternal("www/info_Q4.md"))
+        navset_card_tab(
+          nav_panel(
+            "Application guide",
+            includeMarkdownExternal("www/info_Q4.md")
+          ),
+          nav_panel(
+            "Single method",
+            includeMarkdownExternal("www/info_Q9_sm_sm.md")
+          ),
+          nav_panel(
+            "SS_cross",
+            includeMarkdownExternal("www/info_Q9_sm_cross.md")
+          ),
+          nav_panel(
+            "SS_all",
+            includeMarkdownExternal("www/info_Q9_sm_all.md")
+          )
+        )
       ),
       nav_panel(
         "Q4: Download data", value = "q5",
@@ -756,8 +773,8 @@ ui <- page_navbar(
           title = NULL, full_screen = TRUE,
           tagList(
             shiny::h3("How to find the optimal topN and method?"),
-            includeMarkdownExternal("www/info_Q9_bm_ES.md"),
-            includeMarkdownExternal("www/info_Q9_bm_AUC.md")
+            includeMarkdownExternal("www/info_Q9_bm_METRIC.md"),
+            includeMarkdownExternal("www/info_Q9_bm_SUMMARY.md")
           )
         )
       ),
@@ -848,7 +865,7 @@ server <- function(input, output, session) {
     sendSweetAlert(
       session = session,
       title = "Welcome to SSP2",
-      text = "SSP2 is initializating. Please wait until the window closed.",
+      text = "SSP2 is initializing. Please wait until this window closes.",
       type = "info",
       btn_labels = NA,
       closeOnClickOutside = FALSE,

@@ -34,10 +34,7 @@ if (!exists("pic_cache", mode = "environment") || is.null(pic_cache)) {
   })
 }
 
-.observe_tip("intro_res_bm_AUC_",   "www/info_Q9_bm_AUC.md",
-            "How to find optimal method and topN in Benchmark? (AUC)")
-.observe_tip("intro_res_bm_ES_",    "www/info_Q9_bm_ES.md",
-            "How to find optimal method and topN in Benchmark? (ES)")
+# 旧 AUC / ES 帮助已退役并归档到 archive/（Benchmark 现有 5 个排序质量指标 + Summary）。
 .observe_tip("intro_res_bm_METRIC_", "www/info_Q9_bm_METRIC.md",
             "How to read the ranking-quality metrics?")
 .observe_tip("intro_res_bm_SUMMARY_", "www/info_Q9_bm_SUMMARY.md",
