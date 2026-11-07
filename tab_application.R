@@ -86,7 +86,7 @@ observeEvent(input$runSM, {
     req(judge_sm())
     # 报警子层，函数在下面
     if(judge_sm()){
-      jobid_sm <- paste0("APP",as.integer(Sys.time()),paste0(sample(LETTERS,3),collapse = ""))
+      jobid_sm <- make_jobid("APP")
       submitted_time =  as.character(Sys.time()) 
       shinyWidgets::sendSweetAlert(
         session = session,
@@ -179,7 +179,7 @@ observeEvent(input$runSM, {
         shiny::h3("Loading... Please wait."),
         shiny::h3("It may take 15~30 mins to get result"),
         shiny::h3(paste0("Your jobid is ",jobid_sm)),
-        shiny::h3("Please remember it for retrieve results in Job Center."),
+        job_bookmark_ui(jobid_sm, session, job_status_label(jobid_sm)),
         shiny::uiOutput("sm_progress"),
         # 添加一个JS代码块来通知Shiny服务器端
         tags$script(HTML("

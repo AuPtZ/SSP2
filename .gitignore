@@ -20,16 +20,18 @@ data_preload/robustness_100_480/
 app_cache/
 *.pdf
 app.R.with_robustness_backup
-results/resinfo.db
 cache/queue/*.rds
 demo/*.rdata
 tahoe_prep/
 data_preload/
 .vscode/
-results/resinfo.db
 mcp
 R/mcp_utils.R
 _handoff/
 _review/
+# 生产结果库与备份（含真实用户任务元数据，禁止提交）
 results/
-results/resinfo.db
+results/*.db
+results/*.db-wal
+results/*.db-shm
+results/*.bak*

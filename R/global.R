@@ -176,6 +176,61 @@ includeMarkdownExternal <- function(path) {
   suppressWarnings(htmltools::HTML(markdown::mark(text = txt, output = NULL)))
 }
 
+# 生成不可猜的 jobid（NAR D6：用户数据保密，jobid 即访问凭证）。
+# 保留 BEN/APP 前缀与时间戳，尾部由 3 位大写字母改为 10 位大小写字母数字随机串。
+# 旧 jobid 只是按字符串查库，不受影响（demo jobid 仍可打开）。
+make_jobid <- function(prefix = c("APP", "BEN")) {
+  prefix <- match.arg(prefix)
+  pool <- c(LETTERS, letters, 0:9)
+  paste0(prefix, as.integer(Sys.time()),
+         paste0(sample(pool, 10, replace = TRUE), collapse = ""))
+}
+
+# 构造可收藏的结果链接（NAR D7）：从当前会话的 clientData 动态拼 URL，
+# 不硬编码域名或部署路径（本地 127.0.0.1:PORT 与线上 /SSP2/ 子路径都适用）。
+bookmarkable_job_url <- function(jobid, session) {
+  cd <- session$clientData
+  proto <- if (!is.null(cd$url_protocol) && nzchar(cd$url_protocol))
+    sub("://?$", ":", cd$url_protocol) else "http:"
+  host  <- if (!is.null(cd$url_hostname) && nzchar(cd$url_hostname)) cd$url_hostname else "localhost"
+  port  <- if (!is.null(cd$url_port)) cd$url_port else ""
+  path  <- if (!is.null(cd$url_pathname) && nzchar(cd$url_pathname)) cd$url_pathname else "/"
+  hostpart <- if (nzchar(port) && !port %in% c("80", "443")) paste0(host, ":", port) else host
+  paste0(proto, "//", hostpart, path, "?job=", utils::URLencode(jobid, reserved = TRUE))
+}
+
+# 把 job_queue 的 status 映射成 NAR 要求的 queued / running / finished 展示语
+job_status_label <- function(jobid) {
+  qs <- tryCatch(get_job_status(jobid), error = function(e) NULL)
+  if (is.null(qs) || nrow(qs) == 0) return("submitted")
+  switch(qs$status[1],
+    pending = "queued",
+    running = "running",
+    done    = "finished",
+    error   = "failed",
+    qs$status[1])
+}
+
+# 提交页 / Job Center 复用的「可收藏链接」UI 片段
+job_bookmark_ui <- function(jobid, session, status = NULL) {
+  url <- bookmarkable_job_url(jobid, session)
+  htmltools::tagList(
+    shiny::div(
+      class = "alert alert-light border small",
+      shiny::p(shiny::strong("Bookmarkable result link:"),
+               shiny::br(),
+               shiny::tags$a(href = url, url, target = "_blank")),
+      if (!is.null(status))
+        shiny::p(shiny::strong("Status: "), status, shiny::br(),
+                 "Keep this link private - it is the access credential for your results. ",
+                 "You can reopen it at any time to check progress and retrieve results.")
+      else
+        shiny::p("Keep this link private - it is the access credential for your results. ",
+                 "You can reopen it at any time to check progress and retrieve results.")
+    )
+  )
+}
+
 
 
 

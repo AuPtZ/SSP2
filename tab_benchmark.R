@@ -100,7 +100,7 @@ observeEvent(input$runBM, {
     
     # 报警子层，函数在下面
     if(judge_bm()){
-      jobid_bm <- paste0("BEN",as.integer(Sys.time()),paste0(sample(LETTERS,3),collapse = ""))
+      jobid_bm <- make_jobid("BEN")
       submitted_time =  as.character(Sys.time()) 
       shinyWidgets::sendSweetAlert(
         session = session,
@@ -172,10 +172,10 @@ meta = meta
                            get_topn(i.need.logfc), " in one direction (Up or Down)."))
         },
         shiny::h3(if (filter_mode == "logFC") 
-          "SSP will compute the |log2FC| threshold from 0.50 to maximum."
-          else "SSP will compute the topN from 10 to the number of genes in one direction (Up or Down), capped at 1000."),
+          "SSP2 will compute the |log2FC| threshold from 0.50 to maximum."
+          else "SSP2 will compute the topN from 10 to the number of genes in one direction (Up or Down), capped at 1000."),
         shiny::h3(paste0("Your jobid is ",jobid_bm)),
-        shiny::h3("Please remember it for retrieve results in Job Center."),
+        job_bookmark_ui(jobid_bm, session, job_status_label(jobid_bm)),
         shiny::uiOutput("bm_progress"),
 
         tags$script(HTML("

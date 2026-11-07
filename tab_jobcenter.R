@@ -23,73 +23,79 @@ observeEvent(input$reset_jc, {
 # 报警层
 
 
-# 运行层
-observeEvent(input$jobid_get, {
-  # 报警子层
-  
-  
+# 统一的取结果逻辑：供 Retrieve 按钮与 ?job= 深链共用（NAR D7）。
+load_job_from_id <- function(jobid) {
   show_page_spinner()
   output$display_jc <- renderUI({
     on.exit(hide_page_spinner(), add = TRUE)
 
     isolate({
-      
-      # print("开始判断~")
-      
-      if(gsub("[^[:alnum:]]","",input$jobid_input) == "" | is.null(input$jobid_input)){
+      if (is.null(jobid) || gsub("[^[:alnum:]]", "", jobid) == "") {
         shinyWidgets::sendSweetAlert(
           session = session,
           title = "Error...",
-          text = "Please input vaild jobid",
+          text = "Please input a valid jobid",
           type = "error"
         )
+        return(shiny::tagList())
       }
-      
-      
-      req(gsub("[^[:alnum:]]","",input$jobid_input) != "")
-      req(!is.null(input$jobid_input))
-      
-      # print("开始获取job_info~")
-      # print(input$jobid_input)
-      job_info =  read_from_db(input$jobid_input)
-      # save(job_info,file = paste0("demo/",input$jobid_input,".rdata"))
-      # print(paste0("job_info is",job_info))
+
+      job_info <- read_from_db(jobid)
+
+      # read_from_db 找不到时返回 NA：给友好提示，避免对 NA 取 $ 报错
+      if (!is.list(job_info)) {
+        return(shiny::tagList(
+          shiny::h3("Result not available"),
+          shiny::p(paste0("No result was found for job ID '", jobid, "'.")),
+          shiny::p("Please check the job ID, or the job may still be running in the background.")
+        ))
+      }
 
       # 方案C：作业尚未完成 / 失败时的明确提示
-      if(!is.null(job_info$state)){
+      if (!is.null(job_info$state)) {
         is_err <- job_info$state == "error"
         msg <- switch(job_info$state,
           pending = "Your job is queued and waiting to start. Please check back later.",
           running = "Your job is running in background. Please check back later.",
           error   = paste("Your job failed:", job_info$error),
           "Unknown job status.")
-        shinyWidgets::sendSweetAlert(
-          session = session,
-          title = if (is_err) "Error..." else "Please wait",
-          text = msg,
-          type = if (is_err) "error" else "info"
-        )
+        return(shiny::tagList(
+          shiny::h3("Job status"),
+          shiny::p(shiny::strong(jobid), " - ", msg),
+          job_bookmark_ui(jobid, session, job_status_label(jobid))
+        ))
       }
-      req(is.null(job_info$state))
 
-      if(length(job_info) <= 1){
-        shinyWidgets::sendSweetAlert(
-          session = session,
-          title = "Error...",
-          text = "Please Check the your jobid, \n or maybe your job submitted is still running background.",
-          type = "error"
-        )
+      if (length(job_info) <= 1) {
+        return(shiny::tagList(
+          shiny::h3("Result not available"),
+          shiny::p("Please check the jobid, or the job may still be running in the background.")
+        ))
       }
-      
-      # print("job_info判断")
-      req(length(job_info) >1)
-      req(job_info$yourtable)
-      req(job_info$yourmodule)
-      
-      res_plot(job_info, prefix = "jc")
-      
+
+      shiny::tagList(
+        job_bookmark_ui(jobid, session, job_status_label(jobid)),
+        res_plot(job_info, prefix = "jc")
+      )
     }) # isolate end
   })
+}
+
+# 运行层
+observeEvent(input$jobid_get, {
+  load_job_from_id(input$jobid_input)
+})
+
+# NAR D7：?job=<jobid> 可收藏链接 —— 打开即自动切到 Job Center 并加载结果/状态
+jc_deeplink_done <- reactiveVal(FALSE)
+observeEvent(session$clientData$url_search, {
+  q <- shiny::parseQueryString(session$clientData$url_search)
+  jobid <- q$job
+  if (is.null(jobid) || !nzchar(jobid) || jc_deeplink_done()) return()
+  jc_deeplink_done(TRUE)
+  shiny::updateTextInput(session, "jobid_input", value = jobid)
+  nav_select(id = "intabset", selected = "jobcenter", session = session)
+  load_job_from_id(jobid)
 })
 
 
@@ -197,6 +203,20 @@ initial_jc <- tagList(
     
     ),
 )
+
+# 侧栏：输入 jobid 即显示该任务的可收藏链接与状态（NAR D7）
+output$jc_bookmark_hint <- renderUI({
+  jid <- input$jobid_input
+  if (is.null(jid) || !nzchar(jid)) return(NULL)
+  shiny::div(
+    class = "small mt-2",
+    shiny::strong("Share / bookmark:"), shiny::br(),
+    shiny::tags$a(href = bookmarkable_job_url(jid, session),
+                  bookmarkable_job_url(jid, session), target = "_blank"),
+    shiny::br(),
+    "Status: ", job_status_label(jid)
+  )
+})
 
 # ---- 最近任务列表（P2：本会话提交的 jobid，点击填入输入框）----
 output$jc_recent_jobs <- renderUI({

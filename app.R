@@ -49,17 +49,6 @@ ui <- page_navbar(
       tags$meta(property = "og:type", content = "website"),
       tags$link(rel = "shortcut icon", href = "favicon.ico"),
       tags$base(target = "_blank"),
-      tags$script(HTML(
-        "
-        var _hmt = _hmt || [];
-        (function() {
-          var hm = document.createElement('script');
-          hm.src = 'https://hm.baidu.com/hm.js?80bb4451d9bc4cbd2c38405dfa7de680';
-          var s = document.getElementsByTagName('script')[0];
-          s.parentNode.insertBefore(hm, s);
-        })();
-      "
-      )),
       tags$style(HTML("
         /* bootstrap-select 搜索框在 Bootstrap 5 下的可见性修复 */
         .bootstrap-select .bs-searchbox { padding: 4px 8px; }
@@ -97,7 +86,8 @@ ui <- page_navbar(
               strong(" 155 tumor cell lines"),
               ", multiple perturbation concentrations and treatment times, and",
               strong(" 12,328 genes"),
-              " from the LINCS2020 beta dataset. It offers rigorously benchmarked Signature Search Methods (SSMs)",
+              " from the LINCS2020 beta dataset alone (scope: LINCS only; the Tahoe-100M datasets are additional). ",
+              "It offers rigorously benchmarked Signature Search Methods (SSMs)",
               " and reproducible drug-repurposing workflows for cancer researchers."
             ),
             # div(
@@ -113,13 +103,13 @@ ui <- page_navbar(
               width = 1 / 4,
               fill = FALSE,
               value_box(
-                title = "Tissues",
+                title = "Tissues (all sources)",
                 value = n_tissue # ,
                 # showcase = bs_icon("heart-pulse"),
                 # theme = "info"
               ),
               value_box(
-                title = "Cell lines",
+                title = "Cell lines (all sources)",
                 value = n_cellline # ,
                 # showcase = bs_icon("bug"),
                 # theme = "secondary"
@@ -131,12 +121,19 @@ ui <- page_navbar(
                 # theme = "primary"
               ),
               value_box(
-                title = "Genes",
+                title = "Genes (largest dataset)",
                 value = format(n_gene, big.mark = ",") # ,
                 # showcase = bs_icon("virus"),
                 # theme = "primary"
               )
             ),
+            p(class = "text-muted small mt-1 mb-0",
+              "Statistics above cover all data sources: 155 LINCS tumor cell lines and ",
+              "48 Tahoe-100M entries (47 cell lines plus one pan-cell-line aggregate); ",
+              "A549 appears in both sources, giving 202 unique cell lines in total. ",
+              "The largest single dataset has 62,710 genes (Tahoe-100M) versus 12,328 ",
+              "landmark genes in LINCS2020 beta. The numbers in the introduction above ",
+              "refer to LINCS2020 beta only."),
             # Module cards
             h3("Get started", class = "mt-0 mb-0"),
             layout_column_wrap(
@@ -197,7 +194,11 @@ ui <- page_navbar(
         div(
           class = "d-flex justify-content-between align-items-center flex-wrap gap-2 text-muted",
           span(
-            "This website is free and open to all users and there is no login requirement."
+            "This website is free and open to all users and there is no login requirement. ",
+            tags$a("License: Mulan Permissive Software License v2 (MulanPSL-2.0)",
+                   href = "https://license.coscl.org.cn/MulanPSL2",
+                   class = "link-secondary"),
+            "."
           ),
           tags$a(
             href = "mailto:jbzhangs@foxmail.com",
@@ -227,7 +228,7 @@ ui <- page_navbar(
             step_pop(
               " \u2460 Select a dataset",
               paste(
-                "SSP contains datasets of 155 tumor cell lines at ",
+                "SSP2 contains datasets of 155 tumor cell lines at ",
                 as.character(strong("different concentration and treat time.")),
                 "<br>In general, we recommend user to select a dataset with more drugs and highly related to cancer of interest.",
                 "<br> The blank annotation can be obtained by clicking the button provided below. Once filled out, the annotation file could be used in step 3."
@@ -436,7 +437,7 @@ ui <- page_navbar(
               step_pop(
                 " Step 3. Select a pharmacotranscriptomic dataset",
                 paste(
-                  "SSP contains datasets of 155 tumor cell lines at ",
+                  "SSP2 contains datasets of 155 tumor cell lines at ",
                   as.character(strong("different concentration and treat time.")),
                   "<br>In general, we recommend user to select a dataset with more drugs and highly related to cancer of interest"
                 )
@@ -574,7 +575,8 @@ ui <- page_navbar(
             shiny::p(
               class = "text-muted small mt-2 mb-0",
               "Please be aware that the \"Quick Tip\" button may become unresponsive when you're viewing identical result types across two different modules (e.g. Benchmark results in both Benchmark and Job Center). Use the \"Reset\" button in the respective module to reactivate it."
-            )
+            ),
+            shiny::uiOutput("jc_bookmark_hint")
           ),
           card_footer(class = "bg-transparent d-grid gap-2",
             actionButton("jobid_get", "Retrieve", class = "btn-success"),
@@ -760,11 +762,11 @@ ui <- page_navbar(
         )
       ),
       nav_panel(
-        "Q9: Deploy SSP", value = "q10",
+        "Q9: Deploy SSP2", value = "q10",
         card(title = NULL, full_screen = TRUE, includeMarkdownExternal("www/info_Q10.md"))
       ),
       nav_panel(
-        "Q10: Q&A from reviewers", value = "q11",
+        "Q10: Frequently asked questions", value = "q11",
         card(title = NULL, full_screen = TRUE, includeMarkdownExternal("www/info_Q11.md"))
       )
     )
@@ -845,8 +847,8 @@ server <- function(input, output, session) {
   if (!serverLoaded) {
     sendSweetAlert(
       session = session,
-      title = "Welcome to SSP",
-      text = "SSP is initializating. Please wait until the window closed.",
+      title = "Welcome to SSP2",
+      text = "SSP2 is initializating. Please wait until the window closed.",
       type = "info",
       btn_labels = NA,
       closeOnClickOutside = FALSE,
