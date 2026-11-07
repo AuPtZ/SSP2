@@ -437,38 +437,44 @@ ui <- page_navbar(
               step_pop(
                 " Step 3. Select a pharmacotranscriptomic dataset",
                 paste(
-                  "SSP2 contains datasets of 155 tumor cell lines at ",
-                  as.character(strong("different concentration and treat time.")),
-                  "<br>In general, we recommend user to select a dataset with more drugs and highly related to cancer of interest"
+                  "Select the perturbation class via ", as.character(strong("data source")),
+                  ": <br>",
+                  as.character(strong("LINCS / Tahoe-100M")), " are compound (drug) datasets at ",
+                  as.character(strong("different concentrations and treatment times")),
+                  " (155 LINCS tumor cell lines or 47 Tahoe cell lines, 24 h).<br>",
+                  as.character(strong("LINCS-CRISPR")), " are CRISPR knockout datasets (19 cell lines, 96 h): ",
+                  "the ranked entities are ", as.character(strong("target genes")), ", not drugs, and drug-detail popups are disabled for them.",
+                  "<br>In general, we recommend selecting a dataset with many perturbations and a cell line related to the cancer of interest."
                 )
               )
             ),
             pickerInput(
               "sel_source_sm",
               label = "Select data source",
-              choices = names(drug_num_list_by_source_tissue),
-              selected = DEFAULT_SOURCE,
+              choices = PERT_DATA_SOURCES,
+              selected = DEFAULT_PERT_SOURCE,
               options = list()
             ),
             pickerInput(
               "sel_tissue_sm",
               label = "Select tissue",
-              choices = names(drug_num_list_by_tissue),
-              selected = DEFAULT_TISSUE_SM,
+              choices = names(pert_by_tissue),
+              selected = PERT_DEFAULT_TISSUE_SM,
               options = list()
             ),
             pickerInput(
               "sel_experiment_sm",
               label = "Select a specific dataset",
-              choices = drug_num_list_by_tissue[[DEFAULT_TISSUE_SM]],
-              selected = DEFAULT_DS_SM,
+              choices = pert_by_tissue[[PERT_DEFAULT_TISSUE_SM]],
+              selected = PERT_DEFAULT_DS_SM,
               options = list()
             ),
+            shiny::uiOutput("sm_dataset_class_hint"),
             div(class = "fw-bold small mb-1 mt-3",
               step_pop(
-                " Step 4. Upload oncogenic signature(s)",
+                " Step 4. Upload query signature(s)",
                 HTML(paste(
-                  "Oncogenic signature is a gene list (gene symbol) with log2FC, derived from gene expression profile from cell lines or patient cohorts.",
+                  "A query signature is a gene list (gene symbol) with log2FC, derived from a gene expression profile of cell lines or patient cohorts (e.g. an oncogenic signature from TCGA).",
                   "For single method / SS_all, upload one signature (a",
                   a(href = "demo/signature.txt", "demo signature file"),
                   "is provided). For SS_cross, upload two signatures (signature 2",
@@ -779,11 +785,7 @@ ui <- page_navbar(
         )
       ),
       nav_panel(
-        "Q9: Deploy SSP2", value = "q10",
-        card(title = NULL, full_screen = TRUE, includeMarkdownExternal("www/info_Q10.md"))
-      ),
-      nav_panel(
-        "Q10: Frequently asked questions", value = "q11",
+        "Q9: Frequently asked questions", value = "q11",
         card(title = NULL, full_screen = TRUE, includeMarkdownExternal("www/info_Q11.md"))
       )
     )
@@ -881,21 +883,25 @@ server <- function(input, output, session) {
   # ---- 三级联动：数据源 -> 组织 -> 数据集 ----
   # 切换数据源时同时刷新 tissue 与 dataset；切换 tissue 时只刷新 dataset。
   # ignoreInit = TRUE：不在启动时覆盖 UI 里写死的默认值（Bone / Breast 等）。
-  make_source_obs <- function(src_id, tis_id, dst_id) {
+  # by_source：选择数据源->组织->数据集映射；默认用化合物列表，
+  # Application 页传入 pert_num_list_by_source_tissue（含 LINCS-CRISPR）。
+  make_source_obs <- function(src_id, tis_id, dst_id,
+                              by_source = drug_num_list_by_source_tissue) {
     observeEvent(input[[src_id]], {
-      tt <- names(drug_num_list_by_source_tissue[[input[[src_id]]]])
+      tt <- names(by_source[[input[[src_id]]]])
       updatePickerInput(session, tis_id, choices = tt, selected = tt[1])
-      nc <- drug_num_list_by_source_tissue[[input[[src_id]]]][[tt[1]]]
+      nc <- by_source[[input[[src_id]]]][[tt[1]]]
       updatePickerInput(session, dst_id, choices = nc, selected = unname(nc[1]))
     }, ignoreInit = TRUE)
     observeEvent(input[[tis_id]], {
-      nc <- drug_num_list_by_source_tissue[[input[[src_id]]]][[input[[tis_id]]]]
+      nc <- by_source[[input[[src_id]]]][[input[[tis_id]]]]
       updatePickerInput(session, dst_id, choices = nc, selected = unname(nc[1]))
     }, ignoreInit = TRUE)
   }
   make_source_obs("sel_source_dl", "sel_tissue_dl", "sel_experiment_dl")  # 下载页
   make_source_obs("sel_source",    "sel_tissue",    "sel_experiment")     # Benchmark
-  make_source_obs("sel_source_sm", "sel_tissue_sm", "sel_experiment_sm")  # Application
+  make_source_obs("sel_source_sm", "sel_tissue_sm", "sel_experiment_sm",
+                  by_source = pert_num_list_by_source_tissue)            # Application（含 CRISPR KO）
 
   # 会话内最近任务（P2：Job Center 展示本会话提交的 jobid）
   recent_jobs <- reactiveValues(ids = character(0))

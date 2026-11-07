@@ -34,7 +34,8 @@ if (!exists("pic_cache", mode = "environment") || is.null(pic_cache)) {
   })
 }
 
-# 旧 AUC / ES 帮助已退役并归档到 archive/（Benchmark 现有 5 个排序质量指标 + Summary）。
+# 旧 AUC / ES 帮助已退役，归档件保存在项目外的 ssp2-admin/archive/
+# （Benchmark 现有 5 个排序质量指标 + Summary）。
 .observe_tip("intro_res_bm_METRIC_", "www/info_Q9_bm_METRIC.md",
             "How to read the ranking-quality metrics?")
 .observe_tip("intro_res_bm_SUMMARY_", "www/info_Q9_bm_SUMMARY.md",
@@ -215,9 +216,20 @@ DRUG_CLICK_SFX  <- "_drugclick"    # 点击时间戳（区分"又点了一次"�
 .drug_modal <- function(nm) showModal(.drug_modal_ui(nm))
 
 # 药物结果表：显式 output id + 登记药物名，供弹窗取用
-.drug_dt_ui <- function(tb, id) {
+# 路线B：pert_class="xpr" 时结果是靶基因，不接 PubChem 药物弹窗。
+.drug_dt_ui <- function(tb, id, pert_class = "cp") {
   tb <- as.data.frame(tb, stringsAsFactors = FALSE) %>%
     dplyr::rename(dplyr::any_of(rename_col_rules))
+  if (identical(pert_class, "xpr")) {
+    if ("name" %in% names(tb)) names(tb)[names(tb) == "name"] <- "Target gene"
+    output[[id]] <- DT::renderDataTable(
+      DT::datatable(tb, selection = "none"),
+      server = FALSE)
+    return(shiny::tagList(
+      shiny::tags$p("Rows are target genes (CRISPR KO). Drug details are available only for compound datasets.",
+                    style = "color:#666;margin:2px 0 6px 0;"),
+      DT::DTOutput(id)))
+  }
   nmcol <- if ("name" %in% names(tb)) "name" else names(tb)[1]
   drug_tbl_reg[[id]] <- as.character(tb[[nmcol]])
   output[[id]] <- DT::renderDataTable(
@@ -460,12 +472,24 @@ bm_build_widget <- function(nm, auc_tab, mtab, is_fc) {
     return(mk(draw_dr_metrics(mtab, nm, max_points = 150)))
   NULL
 }
+# 路线B：从 Job 元数据判断扰动类别（"Drug profile name" 的值以 LINCSxpr_ 开头 -> CRISPR KO）。
+# 旧 demo/化合物 job 不含 LINCSxpr_，回退为 cp，行为不变。
+job_pert_class <- function(job_info) {
+  y <- tryCatch(job_info$yourjob, error = function(e) NULL)
+  if (is.null(y) || !nrow(y)) return("cp")
+  vals <- unique(c(as.character(y$V1), as.character(y$V2)))
+  if (any(grepl("^LINCSxpr_", vals))) "xpr" else "cp"
+}
+
 res_plot <- function(job_info, prefix = "res"){
   # 每个调用上下文（Benchmark / Job Center / Application）传不同 prefix，
   # 使 actionButton 的 id 在会话内唯一，避免 "IDs were used for more than one input"。
   jid <- job_info$yourjob$V1[job_info$yourjob$V2 == "Job id"]
   jid <- if (length(jid) && nzchar(jid[1])) jid[1] else "x"
   tid <- function(base) paste0(prefix, "_", base, "_", jid)
+  # 路线B：当前 job 的扰动类别（cp = 化合物；xpr = CRISPR KO 靶基因）
+  pcls <- job_pert_class(job_info)
+  res_heading <- if (identical(pcls, "xpr")) "Results (ranked target genes)" else "Results"
 
   # 模式判定：**以结果表首列名为准**（topN 模式首列 "TopN"，|log2FC| 模式首列 "logFC"）。
   # 不能靠 filter_mode 元数据判定：yourjob 是 V1/V2 键值表，$filter_mode 恒为 NULL；
@@ -668,8 +692,8 @@ style = "color:#b02a37;white-space:pre-wrap;")
       .job_info_block(job_info),
       shiny::h3("Plot summary",actionButton(tid("intro_res_sm_sm"),"Quick Tip",class = "btn-success")),
       renderPlotly(ggplotly(draw_single(job_info$yourtable))),
-      shiny::h3("Results"),
-      .drug_dt_ui(job_info$yourtable, tid("dt_drug")),
+      shiny::h3(res_heading),
+      .drug_dt_ui(job_info$yourtable, tid("dt_drug"), pert_class = pcls),
     )
     
   } else if(job_info$yourmodule == "SS_cross"){
@@ -679,8 +703,8 @@ style = "color:#b02a37;white-space:pre-wrap;")
       renderPlotly(ggplotly(draw_cross(job_info$yourtable, 
                                        bioname1=job_info$signame1,bioname2=job_info$signame2))),
       shiny::br(),
-      shiny::h3("Results"),
-      .drug_dt_ui(job_info$yourtable, tid("dt_drug")),
+      shiny::h3(res_heading),
+      .drug_dt_ui(job_info$yourtable, tid("dt_drug"), pert_class = pcls),
     )
   } else if(job_info$yourmodule == "SS_all"){
     tagList(
@@ -688,8 +712,8 @@ style = "color:#b02a37;white-space:pre-wrap;")
       shiny::h3("Plot summary",actionButton(tid("intro_res_sm_all"),"Quick Tip",class = "btn-success")),
       renderPlotly(ggplotly(draw_all(job_info$yourtable))),
       shiny::br(),
-      shiny::h3("Results"),
-      .drug_dt_ui(job_info$yourtable, tid("dt_drug")),
+      shiny::h3(res_heading),
+      .drug_dt_ui(job_info$yourtable, tid("dt_drug"), pert_class = pcls),
     )
   }
 }

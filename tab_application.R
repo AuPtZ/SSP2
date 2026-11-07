@@ -16,6 +16,26 @@ library(memoise)
 # 初始化
 output$display_sm <- renderUI({initial_sm})
 
+# 路线B：当前数据集类别提示（化合物 vs CRISPR KO 靶基因）。
+# 只影响展示语义；打分/队列/结果结构完全复用现有链路。
+output$sm_dataset_class_hint <- renderUI({
+  f <- input$sel_experiment_sm
+  if (is.null(f) || !length(f) || is.na(f[1]) || !nzchar(f[1])) return(NULL)
+  cls <- profile_pert_class(f)
+  if (identical(cls, "xpr")) {
+    shiny::div(
+      class = "alert alert-info py-2 px-3 small mt-2 mb-1",
+      shiny::strong("CRISPR KO dataset selected. "),
+      "SSP2 ranks ", shiny::strong("target genes"), " (CRISPR knockouts) by how well their ",
+      "knockout signature reverses your query signature. The ranked entities are therefore ",
+      "gene targets, not drugs; drug-detail popups and PubChem links are disabled for this dataset."
+    )
+  } else {
+    shiny::div(class = "small text-muted mt-2 mb-1",
+               "Compound dataset: the ranked entities are drugs/compounds.")
+  }
+})
+
 # === 方案C：作业轮询显示 ===
 rv_sm_job  <- reactiveVal(NULL)   # 当前正在等待结果的 jobid
 rv_sm_prog <- reactiveVal(list(done = 0L, total = 0L))   # worker 写回的进度

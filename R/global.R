@@ -151,6 +151,50 @@ DEFAULT_TISSUE_BM <- if ("Bone"   %in% names(drug_num_list_by_tissue)) "Bone"   
 DEFAULT_TISSUE_SM <- if ("Breast" %in% names(drug_num_list_by_tissue)) "Breast" else names(drug_num_list_by_tissue)[1]
 DEFAULT_DS_BM     <- first_in(DEFAULT_TISSUE_BM)
 DEFAULT_DS_SM     <- first_in(DEFAULT_TISSUE_SM)
+# ============================================================
+# 路线B：扰动类别数据层（当前首批：cp 化合物 + xpr CRISPR KO）
+# registry 由 maintain/14_build_dataset_registry.R 生成（850 行：
+# 687 LINCS cp + 144 Tahoe cp + 19 LINCSxpr）。
+# xpr 数据集只在 Application 模块可选；Benchmark 仍保持化合物
+# （化合物注释语义无法直接套到基因敲除）。
+# ============================================================
+DATASET_REGISTRY_FILE <- "data_preload/others/dataset_registry.rdata"
+dataset_registry <- NULL
+if (file.exists(DATASET_REGISTRY_FILE)) {
+  reg_env <- new.env(parent = emptyenv())
+  load(DATASET_REGISTRY_FILE, envir = reg_env)
+  if (length(ls(reg_env))) dataset_registry <- get(ls(reg_env)[1], envir = reg_env)
+}
+
+# 数据集文件 -> 扰动类别（"cp" 化合物 / "xpr" CRISPR KO 靶基因）
+profile_pert_class <- function(profile_file) {
+  if (is.null(profile_file) || !length(profile_file) || is.na(profile_file[1]) ||
+      !nzchar(as.character(profile_file[1]))) return("cp")
+  if (grepl("^LINCSxpr_", as.character(profile_file[1]))) "xpr" else "cp"
+}
+pert_class_label <- function(cls) {
+  if (identical(cls, "xpr")) "CRISPR KO (ranked entities: target genes)" else "compound"
+}
+
+# Application 可选数据源 = 现有化合物源 + CRISPR KO 源（registry 驱动）
+pert_num_list_by_source_tissue <- drug_num_list_by_source_tissue
+if (!is.null(dataset_registry) &&
+    all(c("profile_file", "pert_class", "tissue", "display_name") %in% names(dataset_registry))) {
+  xr <- dataset_registry[dataset_registry$pert_class == "xpr", , drop = FALSE]
+  if (nrow(xr)) {
+    xr$tissue[is.na(xr$tissue) | !nzchar(xr$tissue)] <- "Other"
+    xr_by_tissue <- split(seq_len(nrow(xr)), xr$tissue)
+    pert_num_list_by_source_tissue[["LINCS-CRISPR"]] <- setNames(
+      lapply(xr_by_tissue, function(i) setNames(xr$profile_file[i], xr$display_name[i])),
+      names(xr_by_tissue))
+  }
+}
+PERT_DATA_SOURCES <- names(pert_num_list_by_source_tissue)
+DEFAULT_PERT_SOURCE <- if (DEFAULT_SOURCE %in% PERT_DATA_SOURCES) DEFAULT_SOURCE else PERT_DATA_SOURCES[1]
+pert_by_tissue <- pert_num_list_by_source_tissue[[DEFAULT_PERT_SOURCE]]
+PERT_DEFAULT_TISSUE_SM <- if ("Breast" %in% names(pert_by_tissue)) "Breast" else names(pert_by_tissue)[1]
+PERT_DEFAULT_DS_SM <- unname(pert_by_tissue[[PERT_DEFAULT_TISSUE_SM]][1])
+
 load("data_preload/others/landmark.rdata")
 
 # Step 标题后显示一个 ? 问号图标，点击该图标弹出说明文字
