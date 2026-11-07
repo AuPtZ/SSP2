@@ -470,6 +470,7 @@ ui <- page_navbar(
               options = list()
             ),
             shiny::uiOutput("sm_dataset_class_hint"),
+            shiny::uiOutput("sm_calibration_hint"),
             div(class = "fw-bold small mb-1 mt-3",
               step_pop(
                 " Step 4. Upload query signature(s)",

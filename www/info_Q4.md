@@ -132,6 +132,11 @@ positive scores indicate mimicry (same direction as your signature).
 
 Drug-detail popups and PubChem links are disabled for CRISPR KO datasets. Method/topN
 benchmarking for genetic perturbations is not yet available in the Benchmark module
-(Benchmark currently selects method/topN on compound datasets only). For exploratory
-analysis on CRISPR KO data, the SSP2 pilot found XSum with topN 25-50 to be the strongest
-combination; treat this as a starting point rather than a calibrated recommendation.
+(Benchmark currently selects method/topN on compound datasets only). Instead, when you
+select a CRISPR KO dataset, the Application shows an **offline method/topN calibration**
+panel for that cell line: it is derived from the SSP2 pilot (leave-one-out guide
+self-retrieval: one guide's signature is used as the query and the other guides of the same
+target gene are the truth) and reports each method's AUC against its permutation null plus
+the fraction of queries that are significant. Treat it as a starting point, not as a
+per-job calibrated recommendation; the pilot's guide-level reproducibility is weak and the
+calibration should be re-derived on aggregated matrices before publication.

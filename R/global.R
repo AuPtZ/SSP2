@@ -195,6 +195,49 @@ pert_by_tissue <- pert_num_list_by_source_tissue[[DEFAULT_PERT_SOURCE]]
 PERT_DEFAULT_TISSUE_SM <- if ("Breast" %in% names(pert_by_tissue)) "Breast" else names(pert_by_tissue)[1]
 PERT_DEFAULT_DS_SM <- unname(pert_by_tissue[[PERT_DEFAULT_TISSUE_SM]][1])
 
+# ---- 路线B：离线 method/topN 校准表（来自 B0 pilot）----------------------------
+# Application 选择 xpr 数据集时，用该细胞系的 pilot 校准结果给出 method/topN 起点。
+# 数据由 maintain/15_build_calibration.R 生成；缺失时 UI 自动不显示。
+CALIBRATION_FILE <- "data_preload/others/calibration_pilot.rdata"
+calibration_pilot <- NULL
+if (file.exists(CALIBRATION_FILE)) {
+  cal_env <- new.env(parent = emptyenv())
+  load(CALIBRATION_FILE, envir = cal_env)
+  if (length(ls(cal_env))) {
+    calibration_pilot <- list(
+      calib_cell  = get0("calib_cell",  envir = cal_env, ifnotfound = NULL),
+      calib_class = get0("calib_class", envir = cal_env, ifnotfound = NULL),
+      meta        = get0("meta",        envir = cal_env, ifnotfound = NULL)
+    )
+  }
+}
+
+# 返回某数据集的校准结果：优先细胞系级，其次类别级；无则 NULL
+calibration_for_dataset <- function(profile_file) {
+  if (is.null(calibration_pilot) || is.null(profile_file) || !length(profile_file)) return(NULL)
+  cls <- profile_pert_class(profile_file)
+  cell <- NULL
+  if (!is.null(dataset_registry) && "cell_iname" %in% names(dataset_registry)) {
+    hit <- dataset_registry[dataset_registry$profile_file == profile_file[1], , drop = FALSE]
+    if (nrow(hit)) cell <- hit$cell_iname[1]
+  }
+  if (is.null(cell) || !nzchar(cell)) {
+    cell <- sub("^LINCSxpr_", "", profile_file[1])
+    cell <- sub("_[0-9]+h\\.rdata$", "", cell)
+  }
+  cc <- calibration_pilot$calib_cell
+  if (!is.null(cc) && nrow(cc) && "kind" %in% names(cc)) {
+    sub <- cc[cc$kind == cls & cc$cell == cell, , drop = FALSE]
+    if (nrow(sub)) return(list(level = "cell", cell = cell, rows = sub))
+  }
+  cl <- calibration_pilot$calib_class
+  if (!is.null(cl) && nrow(cl) && "kind" %in% names(cl)) {
+    sub <- cl[cl$kind == cls, , drop = FALSE]
+    if (nrow(sub)) return(list(level = "class", cell = cell, rows = sub))
+  }
+  NULL
+}
+
 load("data_preload/others/landmark.rdata")
 
 # Step 标题后显示一个 ? 问号图标，点击该图标弹出说明文字
