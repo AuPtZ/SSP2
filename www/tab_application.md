@@ -1,9 +1,9 @@
 ### Application: query promising drugs
 
 In this module you apply signature-search methods (SSMs) to a pharmacotranscriptomic
-dataset (PTD), and SSP2 ranks its drugs by how well they reverse your oncogenic signature.
+dataset (PTD), and SSP2 ranks its drugs by how well they reverse your query signature.
 
-**An oncogenic signature** is a two-column table with header `Gene` and `log2FC`. It is
+**A query signature** is a two-column table with header `Gene` and `log2FC`. It is
 usually built from the differentially expressed genes of cell / animal experiments or
 patient cohorts (GEO, TCGA, ICGC ...). It should contain **at least 10 genes with
 log2FC > 0 and 10 genes with log2FC < 0**, use gene symbols, and be
@@ -33,7 +33,7 @@ consistent hits.
 **3. SS_all.** Drugs are queried with **several SSMs** and the rankings are aggregated with
 Robust Rank Aggregation (RRA), which reports the greatest common drugs of all selected
 methods. Select at least two methods - more methods mean longer runtime (a full selection
-takes 20~40 min). For oncogenic signatures keep the direction **down**; other signature
+takes 20~40 min). For query signatures keep the direction **down**; other signature
 types are not recommended.
 
 <div style="padding: 6px; text-align: center;">

@@ -190,7 +190,7 @@ DRUG_CLICK_SFX  <- "_drugclick"    # 点击时间戳（区分"又点了一次"�
       shiny::tags$p(shiny::strong(nm), style = "margin-bottom:6px;"),
       shiny::tags$p(
         if (is.null(di) || !nrow(di))
-          "The local drug annotation database is not available (data_preload/drugconvertor/drug_info_pubchem.Rdata missing)."
+          "The local compound annotation database is not available (data_preload/drugconvertor/drug_info_pubchem.Rdata missing)."
         else
           paste("No PubChem record for this compound in the local database.",
                 "It is probably a research compound that has no PubChem entry;",

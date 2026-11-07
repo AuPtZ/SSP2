@@ -42,10 +42,10 @@ ui <- page_navbar(
     tags$head(
       tags$title("Signature Search Polestar 2"),
       tags$meta(name = "description",
-                content = "Signature Search Polestar 2 (SSP2) - a webserver for signature-based drug repurposing: evaluate signature search methods and query promising drugs for customized oncogenic signatures."),
+                content = "Signature Search Polestar 2 (SSP2) - a webserver for signature-based drug and perturbation search: evaluate signature search methods, query promising compounds, and rank CRISPR knockout target genes for a customized query signature."),
       tags$meta(property = "og:title", content = "SSP2: Signature Search Polestar 2"),
       tags$meta(property = "og:description",
-                content = "A webserver for signature-based drug repurposing and signature search method evaluation."),
+                content = "A webserver for signature-based drug and perturbation search and signature search method evaluation."),
       tags$meta(property = "og:type", content = "website"),
       tags$link(rel = "shortcut icon", href = "favicon.ico"),
       tags$base(target = "_blank"),
@@ -79,16 +79,20 @@ ui <- page_navbar(
               # class = "lead",
               "A free, open-access web platform for ",
               strong("pharmacotranscriptomic signature search"),
-              " — benchmark drug-repositioning methods, query promising drugs, and explore LINCS2020 perturbation data across cancer cell lines."
+              " — benchmark signature-search methods, query promising compounds, and now also rank ",
+              strong("CRISPR knockout target genes"), " with the same query signature."
             ),
             h5(
               "SSP2 integrates",
               strong(" 155 tumor cell lines"),
-              ", multiple perturbation concentrations and treatment times, and",
+              ", multiple compound concentrations and treatment times, and",
               strong(" 12,328 genes"),
               " from the LINCS2020 beta dataset alone (scope: LINCS only; the Tahoe-100M datasets are additional). ",
-              "It offers rigorously benchmarked Signature Search Methods (SSMs)",
-              " and reproducible drug-repurposing workflows for cancer researchers."
+              "It offers rigorously benchmarked Signature Search Methods (SSMs),",
+              " an additional ",
+              strong("LINCS-CRISPR"),
+              " data source (19 cell lines, 96 h, ~5,000 target genes each), and reproducible ",
+              "drug-/perturbation-search workflows for cancer researchers."
             ),
             # div(
             #   class = "d-flex flex-wrap gap-2 mt-2",
@@ -142,9 +146,7 @@ ui <- page_navbar(
               card(
                 card_header(bs_icon("graph-up"), " Benchmark"),
                 card_body(
-                  p(
-                    "Evaluation of Signature Search methods based on annotation"
-                  ),
+                  p("Evaluation of Signature Search methods based on annotation (compound datasets)"),
                   actionButton(
                     "jump_to_bm",
                     "Open",
@@ -155,7 +157,7 @@ ui <- page_navbar(
               card(
                 card_header(bs_icon("capsule"), " Application (Query Drugs)"),
                 card_body(
-                  p("Drugs repurposing using Signature Search methods"),
+                  p("Compound and CRISPR KO perturbation queries using signature search methods"),
                   actionButton(
                     "jump_to_sm",
                     "Open",
@@ -267,13 +269,13 @@ ui <- page_navbar(
         card(
           card_header(class = "bg-transparent pb-0", div(class = "fw-bold",
             step_pop(
-              " \u2461 Signature & drug annotation",
+              " \u2461 Signature & compound annotation",
               paste(
-                "Step 2: upload an oncogenic signature (Gene + log2FC). A",
+                "Step 2: upload a query signature (Gene + log2FC). A",
                 a(href = "demo/signature.txt", "demo signature file"),
                 "is provided.",
                 "<br>Step 3: upload a one-column drug list (header: Compound_name) - the drugs you want the signature search to retrieve. A",
-                a(href = "demo/drug_annotation_ES.txt", "demo drug annotation"),
+                a(href = "demo/drug_annotation_ES.txt", "demo compound annotation"),
                 "is provided. Then choose what these drugs represent.",
                 "<br>If you have other identifiers (e.g. EntrezID), please go to the",
                 as.character(strong(" converter page")), " to convert."
@@ -281,7 +283,7 @@ ui <- page_navbar(
             )
           )),
           card_body(
-            div(class = "fw-bold small mb-1", "Step 2 \u00b7 Oncogenic signature"),
+            div(class = "fw-bold small mb-1", "Step 2 \u00b7 Query signature"),
             fileInput(
               inputId = "file_sig",
               label = NULL,
@@ -289,7 +291,7 @@ ui <- page_navbar(
               placeholder = "No file selected",
               accept = c(".csv", ".txt")
             ),
-            div(class = "fw-bold small mb-1 mt-2", "Step 3 \u00b7 Drug annotation & what it means"),
+            div(class = "fw-bold small mb-1 mt-2", "Step 3 \u00b7 Compound annotation & what it means"),
             fileInput(
               inputId = "file_anno",
               label = NULL,
@@ -377,7 +379,7 @@ ui <- page_navbar(
                   as.character(strong("SS_all")),
                   "query promising drugs integrating the results of all SSMs.<br>",
                   as.character(strong("SS_corss")),
-                  " use two oncogenic signatures to query promising drugs with consensus."
+                  " use two query signatures to query promising drugs with consensus."
                 )
               )
             ),
@@ -399,7 +401,7 @@ ui <- page_navbar(
                   "<strong>singlemethod / SS_cross:</strong> Just select one method of your interest.<br>",
                   "<strong>SS_all:</strong> Please select at least two methods of your interest. More methods mean more time. ",
                   as.character(strong("The time for a full-selected job is 20~40 mins.")), "<br>",
-                  "<strong>Direction (SS_all):</strong> SS_all only compares drugs in the same direction (scores both > 0 or < 0). Down is default for oncogenic signature; other signature types are not recommended."
+                  "<strong>Direction (SS_all):</strong> SS_all only compares drugs in the same direction (scores both > 0 or < 0). Down is default for query signature; other signature types are not recommended."
                 )
               )
             ),
@@ -475,7 +477,7 @@ ui <- page_navbar(
               step_pop(
                 " Step 4. Upload query signature(s)",
                 HTML(paste(
-                  "A query signature is a gene list (gene symbol) with log2FC, derived from a gene expression profile of cell lines or patient cohorts (e.g. an oncogenic signature from TCGA).",
+                  "A query signature is a gene list (gene symbol) with log2FC, derived from a gene expression profile of cell lines or patient cohorts (e.g. a query signature from TCGA).",
                   "For single method / SS_all, upload one signature (a",
                   a(href = "demo/signature.txt", "demo signature file"),
                   "is provided). For SS_cross, upload two signatures (signature 2",
@@ -803,7 +805,7 @@ ui <- page_navbar(
               div(class = "fw-bold", bs_icon("download"), " Demo files & scripts")),
             card_body(
               p(class = "text-muted small mb-2",
-                "Signature / drug annotation templates and the demo bundle used in the tutorials."),
+                "Signature / compound annotation templates and the demo bundle used in the tutorials."),
               div(class = "d-flex flex-wrap gap-2",
                 downloadButton("dl_demo", "Download Demo", class = "btn-success"),
                 downloadButton("dl_script", "Download Script", class = "btn-success")
