@@ -40,7 +40,6 @@ ui <- page_navbar(
     useSweetAlert(),
     # introjsUI(),
     tags$head(
-      tags$title("Signature Search Polestar 2"),
       tags$meta(name = "description",
                 content = "Signature Search Polestar 2 (SSP2) - a webserver for signature-based drug and perturbation search: evaluate signature search methods, query promising compounds, and rank CRISPR knockout target genes for a customized query signature."),
       tags$meta(property = "og:title", content = "SSP2: Signature Search Polestar 2"),

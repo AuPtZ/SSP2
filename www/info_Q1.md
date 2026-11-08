@@ -20,8 +20,9 @@ SSP2 builds on three public pharmacotranscriptomic resources:
   signatures, 720,216 signatures x 12,328 genes. The 12,328 genes are the 978 directly
   measured L1000 landmark genes plus computationally inferred genes. QC-passing signatures
   were grouped by cell line, dose and treatment time (6 h / 24 h) and averaged per compound,
-  yielding profiles for 155 tumor cell lines. This is the final L1000 release; the CLUE data
-  portal was retired on 2026-01-31 and the public data are archived at GEO.
+  yielding profiles for 155 tumor cell lines. SSP2 uses the CMap LINCS 2020 (Phase 2)
+  Level-5 release; the CLUE data portal was retired on 2026-01-31 and the public data are
+  available from GEO.
 - **Tahoe-100M**: single-cell perturbation profiles aggregated into pseudobulk
   differential-expression signatures (DESeq2 log2FC versus plate-matched DMSO controls).
   Conditions with fewer than 50 treated or control cells were excluded, as were three

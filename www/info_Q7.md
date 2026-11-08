@@ -1,5 +1,5 @@
 ### How to annotate drugs?
-Compound annotations are commonly sourced from databases and resources such as ChEMBL, PubChem, scientific literature, clinical trials, and DrugBank. Users have two options: ① Download a blank annotation table and label it manually, or     
+Compound annotations are lists you prepare yourself. Public resources such as ChEMBL, PubChem, DrugBank, ClinicalTrials.gov and the scientific literature can be consulted when choosing which compounds to include; they are external references, not built-in SSP2 datasets. Users have two options: ① Download a blank annotation table and label it manually, or     
 <div style="padding: 10px; text-align: center;">
 <img src="imgbm2.png" width = "50%" height = "30%" alt="Benchmark result curves comparing signature search methods" />
 </div>

@@ -140,8 +140,8 @@ output$display_about =  renderUI({
         " metadata. The 12,328 genes comprise 978 directly measured L1000 landmark genes ",
         "plus computationally inferred genes. Signatures passing QC were grouped by cell line, ",
         "dose and 6 h / 24 h treatment time and averaged per compound, giving 155 tumor cell ",
-        "lines. This is the final L1000 release; the CLUE data portal was retired on ",
-        "2026-01-31 and the public data are now archived at GEO."
+        "lines. SSP2 uses the CMap LINCS 2020 (Phase 2) Level-5 release; the CLUE data ",
+        "portal was retired on 2026-01-31 and the public data are available from GEO."
       ),
       shiny::tags$li(
         shiny::strong("Tahoe-100M. "),
@@ -161,17 +161,17 @@ output$display_about =  renderUI({
         "the SSP2 pilot (leave-one-guide-out self-retrieval)."
       ),
       shiny::tags$li(
-        shiny::strong("Annotation services. "),
-        "Gene and drug identifier conversion is supported by Ensembl, UniProt and PubChem; ",
-        "compound annotations additionally draw on ChEMBL, DrugBank and ClinicalTrials.gov."
+        shiny::strong("Identifier conversion and external resources. "),
+        "Gene and drug identifier conversion is supported by Ensembl, UniProt and PubChem. ",
+        "ChEMBL, DrugBank and ClinicalTrials.gov are linked as external resources that ",
+        "users may consult when preparing their own annotations; they are not built-in ",
+        "SSP2 datasets."
       )
     ),
     shiny::p(
       "Gene-expression profiles are provided for academic research use under the terms of ",
       "their original sources; please cite the LINCS/CMap and Tahoe-100M resources when ",
-      "publishing results obtained with SSP2. Full version, file checksums, processing ",
-      "parameters and licence notes are documented in the project ",
-      shiny::tags$code("README.md"), "."
+      "publishing results obtained with SSP2."
     ),
 
     shiny::h4("Version history"),
