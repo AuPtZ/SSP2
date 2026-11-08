@@ -42,10 +42,10 @@ ui <- page_navbar(
     tags$head(
       tags$title("Signature Search Polestar 2"),
       tags$meta(name = "description",
-                content = "Signature Search Polestar 2 (SSP2) - a webserver for signature-based drug and perturbation search: evaluate signature search methods, query promising compounds, and rank CRISPR knockout target genes for a customized query signature."),
+                content = "Signature Search Polestar 2 (SSP2) - a webserver for signature-based drug repurposing: evaluate signature search methods and query promising drugs for customized oncogenic signatures."),
       tags$meta(property = "og:title", content = "SSP2: Signature Search Polestar 2"),
       tags$meta(property = "og:description",
-                content = "A webserver for signature-based drug and perturbation search and signature search method evaluation."),
+                content = "A webserver for signature-based drug repurposing and signature search method evaluation."),
       tags$meta(property = "og:type", content = "website"),
       tags$link(rel = "shortcut icon", href = "favicon.ico"),
       tags$base(target = "_blank"),
@@ -79,20 +79,16 @@ ui <- page_navbar(
               # class = "lead",
               "A free, open-access web platform for ",
               strong("pharmacotranscriptomic signature search"),
-              " — benchmark signature-search methods, query promising compounds, and now also rank ",
-              strong("CRISPR knockout target genes"), " with the same query signature."
+              " — benchmark drug-repositioning methods, query promising drugs, and explore LINCS2020 perturbation data across cancer cell lines."
             ),
             h5(
               "SSP2 integrates",
               strong(" 155 tumor cell lines"),
-              ", multiple compound concentrations and treatment times, and",
+              ", multiple perturbation concentrations and treatment times, and",
               strong(" 12,328 genes"),
               " from the LINCS2020 beta dataset alone (scope: LINCS only; the Tahoe-100M datasets are additional). ",
-              "It offers rigorously benchmarked Signature Search Methods (SSMs),",
-              " an additional ",
-              strong("LINCS-CRISPR"),
-              " data source (19 cell lines, 96 h, ~5,000 target genes each), and reproducible ",
-              "drug-/perturbation-search workflows for cancer researchers."
+              "It offers rigorously benchmarked Signature Search Methods (SSMs)",
+              " and reproducible drug-repurposing workflows for cancer researchers."
             ),
             # div(
             #   class = "d-flex flex-wrap gap-2 mt-2",
@@ -146,7 +142,9 @@ ui <- page_navbar(
               card(
                 card_header(bs_icon("graph-up"), " Benchmark"),
                 card_body(
-                  p("Evaluation of Signature Search methods based on annotation (compound datasets)"),
+                  p(
+                    "Evaluation of Signature Search methods based on annotation"
+                  ),
                   actionButton(
                     "jump_to_bm",
                     "Open",
@@ -157,7 +155,7 @@ ui <- page_navbar(
               card(
                 card_header(bs_icon("capsule"), " Application (Query Drugs)"),
                 card_body(
-                  p("Compound and CRISPR KO perturbation queries using signature search methods"),
+                  p("Drugs repurposing using Signature Search methods"),
                   actionButton(
                     "jump_to_sm",
                     "Open",
@@ -269,13 +267,13 @@ ui <- page_navbar(
         card(
           card_header(class = "bg-transparent pb-0", div(class = "fw-bold",
             step_pop(
-              " \u2461 Signature & compound annotation",
+              " \u2461 Signature & drug annotation",
               paste(
-                "Step 2: upload a query signature (Gene + log2FC). A",
+                "Step 2: upload an oncogenic signature (Gene + log2FC). A",
                 a(href = "demo/signature.txt", "demo signature file"),
                 "is provided.",
                 "<br>Step 3: upload a one-column drug list (header: Compound_name) - the drugs you want the signature search to retrieve. A",
-                a(href = "demo/drug_annotation_ES.txt", "demo compound annotation"),
+                a(href = "demo/drug_annotation_ES.txt", "demo drug annotation"),
                 "is provided. Then choose what these drugs represent.",
                 "<br>If you have other identifiers (e.g. EntrezID), please go to the",
                 as.character(strong(" converter page")), " to convert."
@@ -283,7 +281,7 @@ ui <- page_navbar(
             )
           )),
           card_body(
-            div(class = "fw-bold small mb-1", "Step 2 \u00b7 Query signature"),
+            div(class = "fw-bold small mb-1", "Step 2 \u00b7 Oncogenic signature"),
             fileInput(
               inputId = "file_sig",
               label = NULL,
@@ -291,7 +289,7 @@ ui <- page_navbar(
               placeholder = "No file selected",
               accept = c(".csv", ".txt")
             ),
-            div(class = "fw-bold small mb-1 mt-2", "Step 3 \u00b7 Compound annotation & what it means"),
+            div(class = "fw-bold small mb-1 mt-2", "Step 3 \u00b7 Drug annotation & what it means"),
             fileInput(
               inputId = "file_anno",
               label = NULL,
@@ -379,7 +377,7 @@ ui <- page_navbar(
                   as.character(strong("SS_all")),
                   "query promising drugs integrating the results of all SSMs.<br>",
                   as.character(strong("SS_corss")),
-                  " use two query signatures to query promising drugs with consensus."
+                  " use two oncogenic signatures to query promising drugs with consensus."
                 )
               )
             ),
@@ -401,7 +399,7 @@ ui <- page_navbar(
                   "<strong>singlemethod / SS_cross:</strong> Just select one method of your interest.<br>",
                   "<strong>SS_all:</strong> Please select at least two methods of your interest. More methods mean more time. ",
                   as.character(strong("The time for a full-selected job is 20~40 mins.")), "<br>",
-                  "<strong>Direction (SS_all):</strong> SS_all only compares drugs in the same direction (scores both > 0 or < 0). Down is default for query signature; other signature types are not recommended."
+                  "<strong>Direction (SS_all):</strong> SS_all only compares drugs in the same direction (scores both > 0 or < 0). Down is default for oncogenic signature; other signature types are not recommended."
                 )
               )
             ),
@@ -439,45 +437,38 @@ ui <- page_navbar(
               step_pop(
                 " Step 3. Select a pharmacotranscriptomic dataset",
                 paste(
-                  "Select the perturbation class via ", as.character(strong("data source")),
-                  ": <br>",
-                  as.character(strong("LINCS / Tahoe-100M")), " are compound (drug) datasets at ",
-                  as.character(strong("different concentrations and treatment times")),
-                  " (155 LINCS tumor cell lines or 47 Tahoe cell lines, 24 h).<br>",
-                  as.character(strong("LINCS-CRISPR")), " are CRISPR knockout datasets (19 cell lines, 96 h): ",
-                  "the ranked entities are ", as.character(strong("target genes")), ", not drugs, and drug-detail popups are disabled for them.",
-                  "<br>In general, we recommend selecting a dataset with many perturbations and a cell line related to the cancer of interest."
+                  "SSP2 contains datasets of 155 tumor cell lines at ",
+                  as.character(strong("different concentration and treat time.")),
+                  "<br>In general, we recommend user to select a dataset with more drugs and highly related to cancer of interest"
                 )
               )
             ),
             pickerInput(
               "sel_source_sm",
               label = "Select data source",
-              choices = PERT_DATA_SOURCES,
-              selected = DEFAULT_PERT_SOURCE,
+              choices = names(drug_num_list_by_source_tissue),
+              selected = DEFAULT_SOURCE,
               options = list()
             ),
             pickerInput(
               "sel_tissue_sm",
               label = "Select tissue",
-              choices = names(pert_by_tissue),
-              selected = PERT_DEFAULT_TISSUE_SM,
+              choices = names(drug_num_list_by_tissue),
+              selected = DEFAULT_TISSUE_SM,
               options = list()
             ),
             pickerInput(
               "sel_experiment_sm",
               label = "Select a specific dataset",
-              choices = pert_by_tissue[[PERT_DEFAULT_TISSUE_SM]],
-              selected = PERT_DEFAULT_DS_SM,
+              choices = drug_num_list_by_tissue[[DEFAULT_TISSUE_SM]],
+              selected = DEFAULT_DS_SM,
               options = list()
             ),
-            shiny::uiOutput("sm_dataset_class_hint"),
-            shiny::uiOutput("sm_calibration_hint"),
             div(class = "fw-bold small mb-1 mt-3",
               step_pop(
-                " Step 4. Upload query signature(s)",
+                " Step 4. Upload oncogenic signature(s)",
                 HTML(paste(
-                  "A query signature is a gene list (gene symbol) with log2FC, derived from a gene expression profile of cell lines or patient cohorts (e.g. a query signature from TCGA).",
+                  "Oncogenic signature is a gene list (gene symbol) with log2FC, derived from gene expression profile from cell lines or patient cohorts.",
                   "For single method / SS_all, upload one signature (a",
                   a(href = "demo/signature.txt", "demo signature file"),
                   "is provided). For SS_cross, upload two signatures (signature 2",
@@ -741,24 +732,7 @@ ui <- page_navbar(
       ),
       nav_panel(
         "Q3: Application", value = "q4",
-        navset_card_tab(
-          nav_panel(
-            "Application guide",
-            includeMarkdownExternal("www/info_Q4.md")
-          ),
-          nav_panel(
-            "Single method",
-            includeMarkdownExternal("www/info_Q9_sm_sm.md")
-          ),
-          nav_panel(
-            "SS_cross",
-            includeMarkdownExternal("www/info_Q9_sm_cross.md")
-          ),
-          nav_panel(
-            "SS_all",
-            includeMarkdownExternal("www/info_Q9_sm_all.md")
-          )
-        )
+        card(title = NULL, full_screen = TRUE, includeMarkdownExternal("www/info_Q4.md"))
       ),
       nav_panel(
         "Q4: Download data", value = "q5",
@@ -782,13 +756,17 @@ ui <- page_navbar(
           title = NULL, full_screen = TRUE,
           tagList(
             shiny::h3("How to find the optimal topN and method?"),
-            includeMarkdownExternal("www/info_Q9_bm_METRIC.md"),
-            includeMarkdownExternal("www/info_Q9_bm_SUMMARY.md")
+            includeMarkdownExternal("www/info_Q9_bm_ES.md"),
+            includeMarkdownExternal("www/info_Q9_bm_AUC.md")
           )
         )
       ),
       nav_panel(
-        "Q9: Frequently asked questions", value = "q11",
+        "Q9: Deploy SSP2", value = "q10",
+        card(title = NULL, full_screen = TRUE, includeMarkdownExternal("www/info_Q10.md"))
+      ),
+      nav_panel(
+        "Q10: Frequently asked questions", value = "q11",
         card(title = NULL, full_screen = TRUE, includeMarkdownExternal("www/info_Q11.md"))
       )
     )
@@ -805,7 +783,7 @@ ui <- page_navbar(
               div(class = "fw-bold", bs_icon("download"), " Demo files & scripts")),
             card_body(
               p(class = "text-muted small mb-2",
-                "Signature / compound annotation templates and the demo bundle used in the tutorials."),
+                "Signature / drug annotation templates and the demo bundle used in the tutorials."),
               div(class = "d-flex flex-wrap gap-2",
                 downloadButton("dl_demo", "Download Demo", class = "btn-success"),
                 downloadButton("dl_script", "Download Script", class = "btn-success")
@@ -870,7 +848,7 @@ server <- function(input, output, session) {
     sendSweetAlert(
       session = session,
       title = "Welcome to SSP2",
-      text = "SSP2 is initializing. Please wait until this window closes.",
+      text = "SSP2 is initializating. Please wait until the window closed.",
       type = "info",
       btn_labels = NA,
       closeOnClickOutside = FALSE,
@@ -886,25 +864,21 @@ server <- function(input, output, session) {
   # ---- 三级联动：数据源 -> 组织 -> 数据集 ----
   # 切换数据源时同时刷新 tissue 与 dataset；切换 tissue 时只刷新 dataset。
   # ignoreInit = TRUE：不在启动时覆盖 UI 里写死的默认值（Bone / Breast 等）。
-  # by_source：选择数据源->组织->数据集映射；默认用化合物列表，
-  # Application 页传入 pert_num_list_by_source_tissue（含 LINCS-CRISPR）。
-  make_source_obs <- function(src_id, tis_id, dst_id,
-                              by_source = drug_num_list_by_source_tissue) {
+  make_source_obs <- function(src_id, tis_id, dst_id) {
     observeEvent(input[[src_id]], {
-      tt <- names(by_source[[input[[src_id]]]])
+      tt <- names(drug_num_list_by_source_tissue[[input[[src_id]]]])
       updatePickerInput(session, tis_id, choices = tt, selected = tt[1])
-      nc <- by_source[[input[[src_id]]]][[tt[1]]]
+      nc <- drug_num_list_by_source_tissue[[input[[src_id]]]][[tt[1]]]
       updatePickerInput(session, dst_id, choices = nc, selected = unname(nc[1]))
     }, ignoreInit = TRUE)
     observeEvent(input[[tis_id]], {
-      nc <- by_source[[input[[src_id]]]][[input[[tis_id]]]]
+      nc <- drug_num_list_by_source_tissue[[input[[src_id]]]][[input[[tis_id]]]]
       updatePickerInput(session, dst_id, choices = nc, selected = unname(nc[1]))
     }, ignoreInit = TRUE)
   }
   make_source_obs("sel_source_dl", "sel_tissue_dl", "sel_experiment_dl")  # 下载页
   make_source_obs("sel_source",    "sel_tissue",    "sel_experiment")     # Benchmark
-  make_source_obs("sel_source_sm", "sel_tissue_sm", "sel_experiment_sm",
-                  by_source = pert_num_list_by_source_tissue)            # Application（含 CRISPR KO）
+  make_source_obs("sel_source_sm", "sel_tissue_sm", "sel_experiment_sm")  # Application
 
   # 会话内最近任务（P2：Job Center 展示本会话提交的 jobid）
   recent_jobs <- reactiveValues(ids = character(0))

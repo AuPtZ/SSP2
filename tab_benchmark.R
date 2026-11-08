@@ -127,7 +127,7 @@ i.need.logfc <- rio::import(input$file_sig$datapath) %>% dplyr::select(c("Gene",
 # 注释格式校验：单列 Compound_name（给明确报错，而不是让 worker 静默失败）
 if (!"Compound_name" %in% names(drug_anno)) {
 shiny::showNotification(
-"The compound annotation must be a one-column table with header Compound_name.",
+"The drug annotation must be a one-column table with header Compound_name.",
 type = "error", duration = 10)
 return()
 }
@@ -211,7 +211,7 @@ if(is.null(input$file_anno)){
 sendSweetAlert(
 session = session,
 title = "Error...",
-text = "Please upload the compound annotation file (a one-column drug list)!",
+text = "Please upload the drug annotation file (a one-column drug list)!",
 type = "error"
 )
 return(F)
@@ -250,7 +250,7 @@ if(!all(c("Compound_name" ) %in% colnames(anno1))){
 sendSweetAlert(
 session = session,
 title = "Error...",
-text = 'Please make sure your compound annotation contains column "Compound_name" !',
+text = 'Please make sure your drug annotation contains column "Compound_name" !',
 type = "error"
 )
 return(F)
@@ -277,9 +277,11 @@ output$dl_drug_ann_bm <- downloadHandler(
     } else {
       colnames(exp_LINCS2020)  # fallback: expression matrix colnames
     }
-    # 注释格式：单列 Compound_name（Effective / Toxic 由页面上的 anno_type 单选指定，
-    # 不再需要 v1 的 Group 列与 Effective/Ineffective 标签）
-    df_ann_export1 <- data.frame("Compound_name" = drug_names)
+    n_drugs <- length(drug_names)
+    df_ann_export1 <- data.frame(
+      "Compound_name" = drug_names,
+      "Group" = c("Effective","Ineffective",rep(NA, times = max(0, n_drugs - 2)))
+    )
     rio::export(df_ann_export1, file, format = "tsv", row.names = F)
   }
 )

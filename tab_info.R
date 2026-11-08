@@ -1,6 +1,5 @@
 # v1 (2024) 手册已下线：内容仍是旧版（含已删除的 Robustness 模块、five SSMs、
-# 旧 URL），不再通过 UI 提供下载。归档件保存在项目外的 ssp2-admin/archive/，
-# 本目录与 UI 均不再引用。
+# 旧 URL），不再通过 UI 提供下载。归档件见 archive/，说明见 www/info_Q10.md。
 
 output$dl_drug_exp <- downloadHandler(
   filename = function() {
@@ -41,8 +40,10 @@ output$dl_demo <- downloadHandler(
   content = function(file) {
     zip::zip(zipfile = file,
              c("demo/drug_annotation_ES.txt",
+               "demo/drug_annotation_AUC.txt",
                "demo/signature.txt",
                "demo/signature2.txt",
+               "demo/CS_AUC.txt",
                "demo/CS_ES.txt",
                "demo/CS_OGS.txt"
                ),
@@ -72,10 +73,10 @@ output$display_about =  renderUI({
   tagList(
     shiny::h3("About SSP2"),
     shiny::p(
-      "Signature Search Polestar 2 (SSP2) is the upgraded version of the SSP webserver ",
-      "for signature-based drug and perturbation search. It evaluates signature search methods (SSMs) ",
-      "against pharmacotranscriptomic datasets and queries promising compounds, or ranks ",
-      "CRISPR knockout target genes, for a customized query signature."
+      "Signature Search Polestar 2 (SSP2) is the upgraded version of the SSP2 webserver ",
+      "for signature-based drug repurposing. It evaluates signature search methods (SSMs) ",
+      "against pharmacotranscriptomic datasets and queries promising drugs for a customized ",
+      "oncogenic signature."
     ),
 
     shiny::h4("Authors"),
@@ -120,13 +121,12 @@ output$display_about =  renderUI({
 
     shiny::h4("Privacy and data retention"),
     shiny::p(
-      "User-uploaded signatures and compound annotations are used only to run the requested ",
+      "User-uploaded signatures and drug annotations are used only to run the requested ",
       "calculation and are never shared with third parties. SSP2 does not use tracking ",
       "cookies or third-party analytics, and requires no login or registration. ",
       "Results are accessible only to anyone holding the job-specific link (job ID), ",
       "which acts as an access credential; please keep it private. Results are retained ",
-      "for at least 90 days; there is no automatic deletion. You can request removal at ",
-      "any time by contacting the authors."
+      "for at least 90 days, and can be removed earlier on request by contacting the authors."
     ),
 
     shiny::h4("Data sources and provenance"),
@@ -152,18 +152,9 @@ output$display_about =  renderUI({
         "(0.05, 0.5, 5 uM) and a single 24 h time point, covering 379 drugs on 62,710 genes."
       ),
       shiny::tags$li(
-        shiny::strong("CRISPR knockout signatures (route B). "),
-        "LINCS2020 beta ", shiny::tags$code("level5_beta_trt_xpr_n142901x12328.gctx"),
-        " Level-5 CRISPR knockout signatures (140,945 signatures; 5,158 target genes; 27 cell lines, ",
-        "single 96 h time point). Signatures passing QC were averaged per target gene, giving ",
-        "19 cell lines x ~5,000 target genes; the ranked entities are target genes, not compounds. ",
-        "The Application shows an offline method/topN calibration for these datasets derived from ",
-        "the SSP2 pilot (leave-one-guide-out self-retrieval)."
-      ),
-      shiny::tags$li(
         shiny::strong("Annotation services. "),
         "Gene and drug identifier conversion is supported by Ensembl, UniProt and PubChem; ",
-        "compound annotations additionally draw on ChEMBL, DrugBank and ClinicalTrials.gov."
+        "drug annotations additionally draw on ChEMBL, DrugBank and ClinicalTrials.gov."
       )
     ),
     shiny::p(
@@ -176,7 +167,6 @@ output$display_about =  renderUI({
 
     shiny::h4("Version history"),
     shiny::tags$ul(
-      shiny::tags$li(shiny::strong("SSP2 route B"), " (2026-11) - added a perturbation-class data layer: 19 CRISPR knockout (LINCS-CRISPR) datasets, querying of target genes in the Application module with class-aware result rendering (no drug popup for KO), and an offline method/topN calibration panel derived from a leave-one-guide-out self-retrieval pilot."),
       shiny::tags$li(shiny::strong("SSP2"), " (current) - expanded to 155 LINCS tumor cell lines plus Tahoe-100M, seven SSMs (adding PLAGE and QuSAGE), rebuilt ranking-quality metrics, Job Center and Converter modules."),
       shiny::tags$li(shiny::strong("SSP v1"), " - Zhang et al., Bioinformatics, 2024;40(9):btae536.")
     ),

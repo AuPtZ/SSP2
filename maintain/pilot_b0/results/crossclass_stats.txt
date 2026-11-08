@@ -1,2 +1,0 @@
-spearman_auc=0.3323
-spearman_mrr=0.1474
