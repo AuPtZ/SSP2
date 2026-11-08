@@ -273,17 +273,63 @@ make_jobid <- function(prefix = c("APP", "BEN")) {
          paste0(sample(pool, 10, replace = TRUE), collapse = ""))
 }
 
-# 构造可收藏的结果链接（NAR D7）：从当前会话的 clientData 动态拼 URL，
-# 不硬编码域名或部署路径（本地 127.0.0.1:PORT 与线上 /SSP2/ 子路径都适用）。
+# 构造可收藏的结果链接（NAR D7）。
+# 反向代理（frp https2http + hostHeaderRewrite）会把 clientData 的 host 改写成
+# 127.0.0.1，直接拼会生成公网打不开的链接，故按优先级三级回退：
+#   1) SSP2_PUBLIC_BASE 环境变量（如 https://web.biotcm.net/SSP2）——最可靠；
+#   2) 代理透传的 X-Forwarded-Host / X-Forwarded-Proto（session$request）；
+#   3) 最后才用 clientData（本机开发直连时正确）。
+# 不修改任何服务器/代理配置，只影响链接生成。
+.first_nonempty <- function(...) {
+  vals <- c(...)
+  vals <- vals[!is.na(vals) & nzchar(trimws(vals))]
+  if (length(vals)) trimws(vals[1]) else ""
+}
+
 bookmarkable_job_url <- function(jobid, session) {
+  q <- paste0("?job=", utils::URLencode(as.character(jobid), reserved = TRUE))
+
+  # ---- 1) 显式公开基址 ----
+  base <- Sys.getenv("SSP2_PUBLIC_BASE", unset = "")
+  if (nzchar(trimws(base))) {
+    base <- sub("[?#].*$", "", trimws(base))
+    base <- sub("/+$", "", base)
+    if (!grepl("^https?://", base)) base <- paste0("https://", base)
+    return(paste0(base, "/", q))
+  }
+
   cd <- session$clientData
+
+  # ---- 2) 反向代理转发的 host / proto ----
+  req <- tryCatch(session$request, error = function(e) NULL)
+  fwd_host <- ""; fwd_proto <- ""
+  if (!is.null(req)) {
+    get_req <- function(k) {
+      v <- tryCatch(req[[k]], error = function(e) NULL)
+      if (is.null(v)) "" else as.character(v)[1]
+    }
+    # X-Forwarded-* 可能是逗号分隔的多级代理链，取第一项
+    fwd_host  <- .first_nonempty(strsplit(get_req("HTTP_X_FORWARDED_HOST"), ",")[[1]][1])
+    fwd_proto <- .first_nonempty(strsplit(get_req("HTTP_X_FORWARDED_PROTO"), ",")[[1]][1])
+  }
+  if (nzchar(fwd_host)) {
+    # frp/frps 通常只透传 Host；缺少 Proto 时按当前部署走 https。
+    # 统一规范化成 "https:" 形式（fwd_proto 可能是 https / https: / https://）
+    proto <- if (nzchar(fwd_proto)) fwd_proto else "https"
+    proto <- sub("^([A-Za-z]+).*$", "\\1:", proto)
+    path <- if (!is.null(cd$url_pathname) && nzchar(cd$url_pathname)) cd$url_pathname else "/"
+    if (!grepl("/$", path)) path <- paste0(path, "/")
+    return(paste0(proto, "//", fwd_host, path, q))
+  }
+
+  # ---- 3) 直连回退（本机开发 / 无代理）----
   proto <- if (!is.null(cd$url_protocol) && nzchar(cd$url_protocol))
     sub("://?$", ":", cd$url_protocol) else "http:"
   host  <- if (!is.null(cd$url_hostname) && nzchar(cd$url_hostname)) cd$url_hostname else "localhost"
   port  <- if (!is.null(cd$url_port)) cd$url_port else ""
   path  <- if (!is.null(cd$url_pathname) && nzchar(cd$url_pathname)) cd$url_pathname else "/"
   hostpart <- if (nzchar(port) && !port %in% c("80", "443")) paste0(host, ":", port) else host
-  paste0(proto, "//", hostpart, path, "?job=", utils::URLencode(jobid, reserved = TRUE))
+  paste0(proto, "//", hostpart, path, q)
 }
 
 # 把 job_queue 的 status 映射成 NAR 要求的 queued / running / finished 展示语
