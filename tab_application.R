@@ -16,6 +16,63 @@ library(memoise)
 # 初始化
 output$display_sm <- renderUI({initial_sm})
 
+# 路线B：当前数据集类别提示（化合物 vs CRISPR KO 靶基因）。
+# 只影响展示语义；打分/队列/结果结构完全复用现有链路。
+output$sm_dataset_class_hint <- renderUI({
+  f <- input$sel_experiment_sm
+  if (is.null(f) || !length(f) || is.na(f[1]) || !nzchar(f[1])) return(NULL)
+  cls <- profile_pert_class(f)
+  if (identical(cls, "xpr")) {
+    shiny::div(
+      class = "alert alert-info py-2 px-3 small mt-2 mb-1",
+      shiny::strong("CRISPR KO dataset selected. "),
+      "SSP2 ranks ", shiny::strong("target genes"), " (CRISPR knockouts) by how well their ",
+      "knockout signature reverses your query signature. The ranked entities are therefore ",
+      "gene targets, not drugs; drug-detail popups and PubChem links are disabled for this dataset."
+    )
+  } else {
+    shiny::div(class = "small text-muted mt-2 mb-1",
+               "Compound dataset: the ranked entities are drugs/compounds.")
+  }
+})
+
+# 路线B：xpr 数据集展示离线 pilot 校准（方法/topN 起点 + AUC/null/显著比例）。
+# 数据来自 maintain/15_build_calibration.R（B0 pilot 汇总）；没有该细胞系校准时回退类别级。
+output$sm_calibration_hint <- renderUI({
+  f <- input$sel_experiment_sm
+  if (is.null(f) || !length(f) || is.na(f[1]) || !nzchar(f[1])) return(NULL)
+  if (!identical(profile_pert_class(f), "xpr")) return(NULL)
+  cal <- calibration_for_dataset(f)
+  if (is.null(cal) || is.null(cal$rows) || !nrow(cal$rows)) return(NULL)
+  rows <- cal$rows
+  if (!all(c("method", "topn", "auc") %in% names(rows))) return(NULL)
+  rows <- rows[is.finite(rows$auc), , drop = FALSE]
+  if (!nrow(rows)) return(NULL)
+  best <- do.call(rbind, lapply(split(rows, rows$method), function(d) d[which.max(d$auc), , drop = FALSE]))
+  best <- best[order(-best$auc), , drop = FALSE]
+  best <- utils::head(best, 3)
+  nq <- suppressWarnings(max(rows$n_queries, na.rm = TRUE))
+  if (!is.finite(nq)) nq <- NA_integer_
+  fmt <- function(x, d = 3) ifelse(is.finite(x), formatC(x, format = "f", digits = d), "NA")
+  items <- lapply(seq_len(nrow(best)), function(i) {
+    r <- best[i, ]
+    sig <- if ("frac_sig_auc" %in% names(r) && is.finite(r$frac_sig_auc))
+      sprintf("; %.0f%% of queries significant", 100 * r$frac_sig_auc) else ""
+    shiny::tags$li(sprintf("%s @ topN %s - AUC %s (permutation null %s%s)",
+                           r$method, r$topn, fmt(r$auc), fmt(r$null_auc), sig))
+  })
+  level_note <- if (identical(cal$level, "cell"))
+    sprintf("cell line %s", cal$cell) else "perturbation-class fallback"
+  shiny::div(
+    class = "alert alert-secondary py-2 px-3 small mt-2 mb-1",
+    shiny::strong("Offline method/topN calibration. "),
+    sprintf("From the SSP2 pilot (leave-one-out guide self-retrieval, n = %s queries per cell line; %s). Best combinations: ",
+            ifelse(is.na(nq), "n/a", nq), level_note),
+    shiny::tags$ul(class = "mb-1", items),
+    shiny::em("This is an offline pilot calibration, not a live per-job calibration. Treat the recommended method/topN as a starting point; see Help Q3 for caveats.")
+  )
+})
+
 # === 方案C：作业轮询显示 ===
 rv_sm_job  <- reactiveVal(NULL)   # 当前正在等待结果的 jobid
 rv_sm_prog <- reactiveVal(list(done = 0L, total = 0L))   # worker 写回的进度

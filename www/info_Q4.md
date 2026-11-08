@@ -1,23 +1,23 @@
 ### How to query drug in Application and interpret the results?
-In this module, you can apply Signature Search methods (SSMs) to query promising drugs based on the oncogenic signature.   
-**A oncogenic signature** is a gene list header with **Gene** and **Log2FC**. It typically consists of differentially expressed genes derived from sequencing samples of cell or animal experiments, or patient cohorts, such as GEO, TCGA and ICGC.    
-Notably, It should contains **at least 10 genes exhibiting a log2FC > 0 and 10 < 0**. In addition, SSP accepts the genes in the format of **gene symbol** and assumes that input genes in oncogenic signature are **statistically significant (adjust p < 0.05)**.   
+In this module, you can apply Signature Search methods (SSMs) to query promising drugs based on the query signature.   
+**A query signature** is a gene list header with **Gene** and **Log2FC**. It typically consists of differentially expressed genes derived from sequencing samples of cell or animal experiments, or patient cohorts, such as GEO, TCGA and ICGC.    
+Notably, It should contains **at least 10 genes exhibiting a log2FC > 0 and 10 < 0**. In addition, SSP2 accepts the genes in the format of **gene symbol** and assumes that input genes in query signature are **statistically significant (adjust p < 0.05)**.   
 
 <div style="padding: 10px; text-align: center;">
-<img src="imgbm1.2.png" width = "30%" height = "30%" />
+<img src="imgbm1.2.png" width = "30%" height = "30%" alt="Benchmark input form with the dataset, signature and annotation steps" />
 </div>
 
-Should your oncogenic signature contain genes formatted with alternative identifiers (such as EntrezID, Ensembl, UniProt, Gene name, etc.), proceed to the Converter page for the necessary conversion.    
+Should your query signature contain genes formatted with alternative identifiers (such as EntrezID, Ensembl, UniProt, Gene name, etc.), proceed to the Converter page for the necessary conversion.    
 
 Below are three approaches to identify promising drugs:    
 
 <div style="padding: 10px; text-align: center;">
-<img src="imgsm1.png" width = "50%" height = "50%" />
+<img src="imgsm1.png" width = "50%" height = "50%" alt="Application module: query mode selection" />
 </div>  
 
 As shown in the picture:   
 1. **Single method** : This approach queries drugs using a single SSM, adhering to the conventional method. Typically, a filter for differentially expressed genes (DEGs) is applied using abs(log2FC) > ±1.  
-2. **SS_cross** : This approach queries drugs using two signatures and ranks them based on overall scores (Score~Sum~). The purpose of SS_cross is to identify drugs that exhibit same strong response across two distinct oncogenic signatures. This aligns with the current practice in omics data mining, where findings typically require validation across multiple datasets.  
+2. **SS_cross** : This approach queries drugs using two signatures and ranks them based on overall scores (Score~Sum~). The purpose of SS_cross is to identify drugs that exhibit same strong response across two distinct query signatures. This aligns with the current practice in omics data mining, where findings typically require validation across multiple datasets.  
 3. **SS_all** : This approach queries drugs across various SSMs and ranks them uniformly (either up or down) using Robust Rank Aggregation (RRA). SS_All considers all selected SSMs to identify the **greatest common drugs**.
 
 **Each approach entails distinct steps:**  
@@ -29,35 +29,35 @@ For the **Single Method**, the following four steps are required:
 ④ Determine the number of top genes (topN) to utilize, with guidance provided by the Benchmark module.  
 
 <div style="padding: 10px; text-align: center;">
-<img src="imgsm2.png" width = "70%" height = "70%" />
+<img src="imgsm2.png" width = "70%" height = "70%" alt="Application module: signature and dataset input" />
 </div>
 
 For **SS_cross**, step ③ differs:  
-Two oncogenic signature files, along with their respective names, are necessary; the name of the first signature corresponds to the X-axis, while the second corresponds to the Y-axis in the resulting figure.     
+Two query signature files, along with their respective names, are necessary; the name of the first signature corresponds to the X-axis, while the second corresponds to the Y-axis in the resulting figure.     
 Other type signature is not recommended. **For more details, please refer to the help page, specifically Question 8.**   
 <div style="padding: 10px; text-align: center;">
-<img src="imgsm3.png" width = "70%" height = "70%" />
+<img src="imgsm3.png" width = "70%" height = "70%" alt="Application module: method selection" />
 </div>
 
 For **SS_all**, step ① varies:    
-You may choose a selection of SSMs and a ranking direction for the drugs. Generally, if an oncogenic signature is uploaded, select **'down'**.   
+You may choose a selection of SSMs and a ranking direction for the drugs. Generally, if a query signature is uploaded, select **'down'**.   
 
 <div style="padding: 10px; text-align: center;">
-<img src="imgsm4.png" width = "70%" height = "70%" />
+<img src="imgsm4.png" width = "70%" height = "70%" alt="Application module: result plot" />
 </div>
 
 Ultimately, initiate the process by clicking 'Run,' which will generate a job ID (**jobid**) prefixed with 'APP'. Results are typically available within approximately 15~30 minutes, and a 'Quick Tip' will be provided to assist with result interpretation. Alternatively, you may close the page and retrieve the job ID in the **Job Center**  for future result retrieval.   
 
 <div style="padding: 10px; text-align: center;">
-<img src="imgsm5.png" width = "40%" height = "40%" />
+<img src="imgsm5.png" width = "40%" height = "40%" alt="Application module: result table" />
 </div>
 
 #### Result interpretation
 
-The single method is a classic drug repurposing method. One oncogenic signature and one signature search method (SSM) are required to retrieve drugs. 
+The single method is a classic drug repurposing method. One query signature and one signature search method (SSM) are required to retrieve drugs. 
 In result of SS_all, here is a lollipop with colored dots representing Top10 drugs from pharmacotranscriptomic dataset. For better readability, we use logP to color the dot.  
 <div style="padding: 10px; text-align: center;">
-<img src="imginfoQ9_14.gif" width = "80%" height = "80%" />
+<img src="imginfoQ9_14.gif" width = "80%" height = "80%" alt="Animated example of an Application result plot" />
 </div>
 
 In the corresponding table below, Here are four columns:  
@@ -69,17 +69,17 @@ In the corresponding table below, Here are four columns:
 **Direction**: the drug show potential to input signature. In breif, <0 means "down" and >0 means "up".
 
 <div style="padding: 10px; text-align: center;">
-<img src="imginfoQ9_15.png" width = "80%" height = "80%" />
+<img src="imginfoQ9_15.png" width = "80%" height = "80%" alt="Example of an SS_cross result table" />
 </div>
 
-Generally, Since SSP accepts input of oncogenic signatures, **drugs with score >0 may be agonistic to cancer, drugs with score <0 may be therapeutically beneficial against cancer.**    
-Of note, table reordered the drugs by absolute value of Scores, rather than scaled scores, so that the top drugs may be sometimes polarized in up (>0) or down (<0). It is used when evaluate the overall response of signature. For example, if drugs of a specific pharmacotranscriptomic dataset response to the oncogenic signature with mainly positive scores, the concentration and treat time may be inappropriate for further investigation.  
+Generally, Since SSP2 accepts input of query signatures, **drugs with score >0 may be agonistic to cancer, drugs with score <0 may be therapeutically beneficial against cancer.**    
+Of note, table reordered the drugs by absolute value of Scores, rather than scaled scores, so that the top drugs may be sometimes polarized in up (>0) or down (<0). It is used when evaluate the overall response of signature. For example, if drugs of a specific pharmacotranscriptomic dataset response to the query signature with mainly positive scores, the concentration and treat time may be inappropriate for further investigation.  
 
 SS_all compute signature across various signature search methods (SSMs) and generated prioritized drugs in same direction (up or down, it depends on user's choice). Subsequently, these drugs along with their respective ranks are incorporated into the [Robust Rank Aggregation (RRA)](https://doi.org/10.1093/bioinformatics/btr709) methodology. RRA is used to discern drugs that exhibit a consistently superior ranking compared to what would be expected under the null hypothesis of uncorrelated inputs. It further assigns a significance score for each drug, thereby providing a rigorous statistical basis for the prioritization.  
 The RRA compute the significance of each drug, just like p-value and we convert it into score by logP.  
 In result of SS_all, here is a scatter plot with colored dots representing Top10 drugs, and a legend showing the drugs' scores. These drugs are promising based on the input signature.
 <div style="padding: 10px; text-align: center;">
-<img src="imginfoQ9_10.gif" width = "80%" height = "80%" />
+<img src="imginfoQ9_10.gif" width = "80%" height = "80%" alt="Animated example of reading a Benchmark result" />
 </div>
 
 In the corresponding table below, Here are four columns:  
@@ -88,12 +88,12 @@ In the corresponding table below, Here are four columns:
 **Freq**: the number of SSM where the drugs are enriched in up (score of SSM > 0) or down (score of SSM < 0). In the plot, it corresponds to the "method," where the number of methods is represented by the size of the bubbles.      
 **Method**:  the name SSM where the drugs are enriched.  
 <div style="padding: 10px; text-align: center;">
-<img src="imginfoQ9_13.png" width = "80%" height = "80%" />
+<img src="imginfoQ9_13.png" width = "80%" height = "80%" alt="Example of a single-method result table" />
 </div>
 Generally, a drug with more SSMs enriched and the higher score are more promising.  
 
 
-SS_cross evaluate the polypharmacological effect of drugs. It computes the scores of drugs for two disparate oncogenic signature Score~sig1~ and Score~sig2~ via a specific SSM. Then these drugs are classified into four quadrant: 
+SS_cross evaluate the polypharmacological effect of drugs. It computes the scores of drugs for two disparate query signature Score~sig1~ and Score~sig2~ via a specific SSM. Then these drugs are classified into four quadrant: 
 Q1: both scores >0,   
 Q2: Score~sig1~ >0 but Score~sig2~ <0,   
 Q3: both scores <0,   
@@ -105,7 +105,7 @@ $$
 
 In result of SS_all, here is a scatter plot with colored dots representing drugs from pharmacotranscriptomic dataset. These drugs are denoted in four quadrants: **Q1 (both >0) colored pink**,**Q2 (x-axis <0 but y-axis >0) colored dark Khaki**, **Q3(both <0) colored green**, **Q4 (x-axis <0 but y-axis >0) colored dark Cyan**, notably, if a drug has a score of zero, it would be on the axis and colored grey.  
 <div style="padding: 10px; text-align: center;">
-<img src="imginfoQ9_11.gif" width = "80%" height = "80%" />
+<img src="imginfoQ9_11.gif" width = "80%" height = "80%" alt="Animated example of comparing Benchmark methods" />
 </div>
 
 In the corresponding table below, Here are four columns:  
@@ -115,8 +115,28 @@ In the corresponding table below, Here are four columns:
 **Scale_score_x** and **Scale_score_y**: two scores of drugs compute by SSM.  
 
 <div style="padding: 10px; text-align: center;">
-<img src="imginfoQ9_16.png" width = "80%" height = "80%" />
+<img src="imginfoQ9_16.png" width = "80%" height = "80%" alt="Example of an SS_all result table" />
 </div>
 
-Generally, Since SSP accepts input of oncogenic signatures, which represent the status of different cancer cohorts or oncogenic processes, each quadrant in SS_cross carries a distinct interpretation: **Q1 (both >0) signifies drugs that are agonistic to two oncogenic signatures, Q2 (x-axis <0 but y-axis >0) and Q4 (x-axis <0 but y-axis >0) denote drugs that are agonistic to one oncogenic signature but potentially therapeutic for another. Q3 (both <0) represents drugs that may be therapeutically beneficial against oncogenic signatures**. Consequently, **drugs in Q3 are recommended for repurposing**.   
+Generally, Since SSP2 accepts input of query signatures, which represent the status of different cancer cohorts or oncogenic processes, each quadrant in SS_cross carries a distinct interpretation: **Q1 (both >0) signifies drugs that are agonistic to two query signatures, Q2 (x-axis <0 but y-axis >0) and Q4 (x-axis <0 but y-axis >0) denote drugs that are agonistic to one query signature but potentially therapeutic for another. Q3 (both <0) represents drugs that may be therapeutically beneficial against query signatures**. Consequently, **drugs in Q3 are recommended for repurposing**.   
 In addition, if you want to use this figure with drug of interest, we highly recommend you download the picture and label them manually.    
+
+#### CRISPR knockout (CRISPR KO) datasets (new)
+
+Since this version, the Application module can also query **CRISPR knockout** datasets:
+select data source `LINCS-CRISPR` (19 cell lines, 96 h, derived from LINCS2020 beta). For these datasets the ranked entities are **target genes**, not compounds: each row
+is a gene whose knockout signature is compared with your query signature. A negative score
+means that knocking out that gene produces a transcriptional response opposite to your
+signature, i.e. the gene is a candidate target whose inhibition may mimic a reversing drug;
+positive scores indicate mimicry (same direction as your signature).
+
+Drug-detail popups and PubChem links are disabled for CRISPR KO datasets. Method/topN
+benchmarking for genetic perturbations is not yet available in the Benchmark module
+(Benchmark currently selects method/topN on compound datasets only). Instead, when you
+select a CRISPR KO dataset, the Application shows an **offline method/topN calibration**
+panel for that cell line: it is derived from the SSP2 pilot (leave-one-out guide
+self-retrieval: one guide's signature is used as the query and the other guides of the same
+target gene are the truth) and reports each method's AUC against its permutation null plus
+the fraction of queries that are significant. Treat it as a starting point, not as a
+per-job calibrated recommendation; the pilot's guide-level reproducibility is weak and the
+calibration should be re-derived on aggregated matrices before publication.
