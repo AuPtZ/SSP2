@@ -1,6 +1,6 @@
 ### Converter (for Gene)
 
-SSP expects a two-column signature with header `Gene` and `log2FC`, and **the gene
+SSP2 expects a two-column signature with header `Gene` and `log2FC`, and **the gene
 identifier must be the gene symbol**. If your signature uses another identifier
 (**ENTREZID**, **ENSEMBL**, **UNIPROT** or **GENENAME**), convert it here first - paste your
 list in the left panel, choose the identifier type and click **Convert**; the result is
@@ -10,7 +10,7 @@ shown immediately on the right.
 **In the current version, we have adopted the established practice of utilizing the 978 landmark genes from the LINCS L1000 database, as seen in prior research (PMID:28699633,35191375).**
 
 <div style="padding: 6px; text-align: center;">
-<img src="imgct_new_g.png" width="34%" />
+<img src="imgct_new_g.png" width="34%" alt="Gene identifier conversion panel" />
 </div>
 
 Here are some tips:

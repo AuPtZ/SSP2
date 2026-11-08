@@ -11,8 +11,3 @@ Because the five metrics have completely different units (AUROC ≈ 0.5, EF can 
 **The table below** lists the same numbers without colour coding: `median`, `max` over the sweep, the two null reference values, `rel_null` (the colour value), `p_best` (the smallest permutation p reached anywhere in the sweep), `frac_p05` (the fraction of signature sizes with p < 0.05 — the criterion behind the asterisk) and `sig`.
 
 **How to use it.** Pick the method whose row is red across several metrics — that is a method that beats random consistently rather than on a single metric. A row that is red on one metric and blue on another is telling you something real about that method (e.g. it is good at the head of the ranking but poor overall), so do not average the tiles into a single score.
-
-**Two caveats worth reading.**
-
-1. **Discrete metrics give coarse p-values.** Recall@K can only take the values k / (number of actives) and EF@K% is a ratio of small integers. With 7 actives, "two hits in the top 20" has p = 0.047 — right at the conventional threshold. Their resolution improves with more annotated actives, so read the significance of these two metrics together with the number of actives shown in the job information panel.
-2. A single query is one sample. Differences between methods on one query are dominated by which mechanism-of-action class you happened to query. Conclusions about "which method is better" require aggregating over many queries; the heat map shows a single query.
